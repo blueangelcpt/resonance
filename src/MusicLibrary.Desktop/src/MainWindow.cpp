@@ -28,6 +28,7 @@
 #include <QTextBrowser>
 #include <QTimer>
 #include <QApplication>
+#include <QShortcut>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
 
@@ -52,6 +53,24 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
 	m_library = std::make_unique<Library>();
 	m_runner = new TaskRunner(this);   // Qt parent ownership.
+	m_player = new AudioPlayer(this);
+
+	connect(m_player, &AudioPlayer::positionChanged, this, &MainWindow::onPlayerPosition);
+	connect(m_player, &AudioPlayer::stateChanged, this, &MainWindow::onPlayerState);
+	connect(m_player, &AudioPlayer::errorOccurred, this, [this](const QString& message) {
+		appendLog(message);
+		statusBar()->showMessage(message, 8000);
+	});
+	connect(m_player, &AudioPlayer::outputDeviceChanged, this,
+		[this](bool available, const QString& name) {
+			if (m_deck) m_deck->setPlaybackAvailable(available, name);
+			appendLog(available
+				? QStringLiteral("Audio output available: %1").arg(name)
+				: QStringLiteral("Audio output went away; library functions are unaffected."));
+		});
+	connect(m_player, &AudioPlayer::trackFinished, this, [this]() {
+		appendLog(QStringLiteral("Playback reached the end of the track."));
+	});
 
 	connect(m_runner, &TaskRunner::started, this, &MainWindow::onTaskStarted);
 	connect(m_runner, &TaskRunner::progressed, this, &MainWindow::onTaskProgress);
@@ -350,16 +369,101 @@ QWidget* MainWindow::buildWorkbenchTab() {
 	connect(searchTimer, &QTimer::timeout, this, &MainWindow::onFilterChanged);
 	connect(m_searchEdit, &QLineEdit::textChanged, this, [searchTimer]() { searchTimer->start(); });
 
-	// Spectrum plumbing.
-	connect(m_deck, &DeckPanel::sweepToggled, this, [this](bool sweeping) {
-		m_spectrum->setSweeping(sweeping);
-	});
+	// Transport and spectrum plumbing.
 	connect(m_deck, &DeckPanel::analyseRequested, this, &MainWindow::onAnalyseSpectrum);
+	connect(m_deck, &DeckPanel::playPauseRequested, this, &MainWindow::onPlayPause);
+	connect(m_deck, &DeckPanel::stopRequested, this, &MainWindow::onStop);
+	connect(m_deck, &DeckPanel::seekRequested, this, &MainWindow::onSeek);
+	connect(m_deck, &DeckPanel::volumeChanged, this, [this](double volume) {
+		m_player->setVolume(volume);
+	});
+	// Dragging the analyser's playhead seeks the audio, so the two never
+	// disagree about where in the track we are.
 	connect(m_spectrum, &VfdSpectrumWidget::positionChanged, this, [this](double fraction) {
-		m_deck->setPosition(fraction);
+		if (m_player->state() == PlaybackState::Stopped) m_deck->setPosition(fraction);
 	});
 
+	m_deck->setPlaybackAvailable(m_player->hasOutputDevice(), m_player->outputDeviceName());
+
+	// Space toggles playback from anywhere in the workbench.
+	auto* playPause = new QShortcut(QKeySequence(Qt::Key_Space), this);
+	connect(playPause, &QShortcut::activated, this, &MainWindow::onPlayPause);
+
 	return page;
+}
+
+void MainWindow::onPlayPause() {
+	if (!m_library || !m_library->isOpen()) return;
+	if (!m_player->hasOutputDevice()) {
+		statusBar()->showMessage(QStringLiteral(
+			"No audio output device is available. Every library function still works."), 8000);
+		return;
+	}
+
+	const QModelIndex current = m_trackTable ? m_trackTable->currentIndex() : QModelIndex();
+	if (!current.isValid()) return;
+	const auto record = m_trackModel->recordAt(current.row());
+	if (!record) return;
+
+	// Only decode when the selection actually changed.
+	if (!(m_loadedForPlayback == record->id)) {
+		std::error_code ec;
+		fs::path source;
+		for (const auto& root : m_library->guard().protectedRoots()) {
+			const fs::path candidate = root.resolvedPath / record->relativePath;
+			if (fs::exists(candidate, ec) && !ec) { source = candidate; break; }
+		}
+		if (source.empty()) {
+			statusBar()->showMessage(QStringLiteral("The source file is not reachable."), 6000);
+			return;
+		}
+
+		QApplication::setOverrideCursor(Qt::BusyCursor);
+		auto status = m_player->load(source);
+		QApplication::restoreOverrideCursor();
+
+		if (!status) {
+			appendLog(QStringLiteral("Could not load for playback: %1")
+				.arg(qs(status.error().describe())));
+			statusBar()->showMessage(qs(status.error().message), 8000);
+			return;
+		}
+		m_loadedForPlayback = record->id;
+		m_player->setVolume(m_player->volume());
+		appendLog(QStringLiteral("Loaded for playback: %1").arg(qs(record->relativePath)));
+	}
+
+	m_player->togglePlayPause();
+}
+
+void MainWindow::onStop() {
+	m_player->stop();
+}
+
+void MainWindow::onSeek(double fraction) {
+	m_player->seek(fraction);
+	if (m_spectrum) m_spectrum->setPosition(fraction);
+}
+
+void MainWindow::onPlayerPosition(qint64 positionMs, qint64 durationMs) {
+	m_deck->setPlaybackPosition(positionMs, durationMs);
+	// The analyser follows the real playhead while audio is playing.
+	if (durationMs > 0 && m_spectrum && m_player->state() == PlaybackState::Playing) {
+		m_spectrum->setPosition(static_cast<double>(positionMs) / static_cast<double>(durationMs));
+	}
+}
+
+void MainWindow::onPlayerState(PlaybackState state) {
+	m_deck->setPlaybackState(static_cast<int>(state));
+	if (m_spectrum) {
+		// The analyser reads its own precomputed spectrogram; following the
+		// playhead is enough to keep it in step without re-running an FFT in the
+		// audio callback.
+		m_spectrum->setSweeping(false);
+	}
+	if (state == PlaybackState::Playing) {
+		statusBar()->showMessage(QStringLiteral("Playing."), 3000);
+	}
 }
 
 void MainWindow::onExplorerFilter(const TrackFilter& filter) {

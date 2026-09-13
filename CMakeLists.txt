@@ -102,7 +102,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(TAGLIB REQUIRED IMPORTED_TARGET taglib)
 
 if(ML_BUILD_DESKTOP)
-	find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets)
+	find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Multimedia)
 	qt_standard_project_setup()
 endif()
 
@@ -113,6 +113,12 @@ endif()
 # full strictness.
 add_library(minimp3 INTERFACE)
 target_include_directories(minimp3 SYSTEM INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/minimp3")
+
+# The sample type is part of minimp3's ABI: without this define mp3d_sample_t is
+# int16_t, with it float. Setting it on the interface target means every
+# translation unit agrees, rather than the one that happens to define it locally
+# disagreeing with the one that does not.
+target_compile_definitions(minimp3 INTERFACE MINIMP3_FLOAT_OUTPUT)
 
 # ---------------------------------------------------------------------------
 # Targets

@@ -11,6 +11,8 @@
 #include <QLineEdit>
 #include <QPixmap>
 #include <QPushButton>
+#include <QSignalBlocker>
+#include <QSlider>
 #include <QTabWidget>
 #include <QTextBrowser>
 #include <QTimer>
@@ -362,31 +364,74 @@ DeckPanel::DeckPanel(QWidget* parent) : QWidget(parent) {
 	m_stateBadges->setFont(theme::monoFont(8));
 	m_stateBadges->setWordWrap(true);
 	marqueeColumn->addWidget(m_stateBadges);
+
+	// Precision seek bar, as the design's waveform scrub track.
+	m_seekSlider = new QSlider(Qt::Horizontal, this);
+	m_seekSlider->setRange(0, 1000);
+	m_seekSlider->setValue(0);
+	m_seekSlider->setToolTip(QStringLiteral("Seek"));
+	connect(m_seekSlider, &QSlider::sliderPressed, this, [this]() { m_seeking = true; });
+	connect(m_seekSlider, &QSlider::sliderReleased, this, [this]() {
+		m_seeking = false;
+		emit seekRequested(m_seekSlider->value() / 1000.0);
+	});
+	marqueeColumn->addWidget(m_seekSlider);
 	marqueeColumn->addStretch(1);
 
 	layout->addLayout(marqueeColumn, 1);
 
-	// Controls.
+	// --- Transport -------------------------------------------------------
 	auto* controls = new QVBoxLayout();
-	controls->setSpacing(6);
-	m_sweepButton = new QPushButton(QStringLiteral("▶ Sweep"), this);
-	m_sweepButton->setCheckable(true);
-	m_sweepButton->setProperty("mlPrimary", true);
-	m_sweepButton->setToolTip(QStringLiteral(
-		"Sweep the analyser across the decoded track.\n\n"
-		"Resonance has no playback engine: this moves a playhead through the "
-		"file's analysed spectrum, it does not play audio."));
-	connect(m_sweepButton, &QPushButton::toggled, this, &DeckPanel::sweepToggled);
-	controls->addWidget(m_sweepButton);
+	controls->setSpacing(5);
+
+	auto* transportRow = new QHBoxLayout();
+	transportRow->setSpacing(5);
+
+	m_playButton = new QPushButton(QStringLiteral("▶"), this);
+	m_playButton->setProperty("mlPrimary", true);
+	m_playButton->setFixedWidth(44);
+	m_playButton->setToolTip(QStringLiteral("Play or pause  (Space)"));
+	connect(m_playButton, &QPushButton::clicked, this, &DeckPanel::playPauseRequested);
+	transportRow->addWidget(m_playButton);
+
+	m_stopButton = new QPushButton(QStringLiteral("■"), this);
+	m_stopButton->setFixedWidth(36);
+	m_stopButton->setToolTip(QStringLiteral("Stop"));
+	connect(m_stopButton, &QPushButton::clicked, this, &DeckPanel::stopRequested);
+	transportRow->addWidget(m_stopButton);
 
 	auto* analyseButton = new QPushButton(QStringLiteral("Analyse"), this);
-	analyseButton->setToolTip(QStringLiteral("Decode this track and compute its spectrum."));
+	analyseButton->setToolTip(QStringLiteral(
+		"Decode this track and compute its full spectrum for the analyser."));
 	connect(analyseButton, &QPushButton::clicked, this, [this]() {
 		if (m_record) emit analyseRequested(m_record->id);
 	});
-	controls->addWidget(analyseButton);
-	controls->addStretch(1);
+	transportRow->addWidget(analyseButton);
+	controls->addLayout(transportRow);
 
+	auto* volumeRow = new QHBoxLayout();
+	volumeRow->setSpacing(5);
+	auto* volumeIcon = new QLabel(QStringLiteral("VOL"), this);
+	volumeIcon->setFont(theme::monoFont(7));
+	volumeIcon->setProperty("mlMuted", true);
+	volumeRow->addWidget(volumeIcon);
+
+	m_volumeSlider = new QSlider(Qt::Horizontal, this);
+	m_volumeSlider->setRange(0, 100);
+	m_volumeSlider->setValue(85);
+	m_volumeSlider->setFixedWidth(96);
+	connect(m_volumeSlider, &QSlider::valueChanged, this, [this](int value) {
+		emit volumeChanged(value / 100.0);
+	});
+	volumeRow->addWidget(m_volumeSlider);
+	controls->addLayout(volumeRow);
+
+	m_deviceLabel = new QLabel(this);
+	m_deviceLabel->setFont(theme::monoFont(7));
+	m_deviceLabel->setProperty("mlMuted", true);
+	controls->addWidget(m_deviceLabel);
+
+	controls->addStretch(1);
 	layout->addLayout(controls);
 
 	// Marquee scroll.
@@ -483,6 +528,36 @@ void DeckPanel::showFile(const FileRecord& record) {
 			}
 		}
 	}
+}
+
+void DeckPanel::setPlaybackState(int state) {
+	// 0 Stopped, 1 Playing, 2 Paused -- passed as int to keep this header free of
+	// the player's enum.
+	m_playButton->setText(state == 1 ? QStringLiteral("❚❚") : QStringLiteral("▶"));
+	m_playButton->setToolTip(state == 1
+		? QStringLiteral("Pause  (Space)") : QStringLiteral("Play  (Space)"));
+}
+
+void DeckPanel::setPlaybackPosition(std::int64_t positionMs, std::int64_t durationMs) {
+	if (durationMs <= 0) return;
+	m_counterLabel->setText(qs(text::formatDuration(positionMs)) + QStringLiteral(" / ")
+		+ qs(text::formatDuration(durationMs)));
+	if (!m_seeking) {
+		const QSignalBlocker blocker(m_seekSlider);
+		m_seekSlider->setValue(static_cast<int>((positionMs * 1000) / durationMs));
+	}
+}
+
+void DeckPanel::setPlaybackAvailable(bool available, const QString& deviceName) {
+	m_playButton->setEnabled(available);
+	m_stopButton->setEnabled(available);
+	m_seekSlider->setEnabled(available);
+	m_volumeSlider->setEnabled(available);
+	m_deviceLabel->setText(available
+		? QStringLiteral("out: %1").arg(deviceName.left(26))
+		: QStringLiteral("no audio output device"));
+	m_deviceLabel->setStyleSheet(QStringLiteral("color:%1;")
+		.arg(theme::hex(available ? theme::kTextMuted : theme::kNeonPink)));
 }
 
 void DeckPanel::setPosition(double fraction) {

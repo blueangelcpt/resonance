@@ -27,6 +27,7 @@ class QTextBrowser;
 class QTreeWidget;
 class QTreeWidgetItem;
 class QCheckBox;
+class QSlider;
 
 namespace ml::desktop {
 
@@ -135,9 +136,19 @@ public:
 	/// Drives the marquee and the position readout from the spectrum sweep.
 	void setPosition(double fraction);
 
+	/// Reflects the player's transport state on the controls.
+	void setPlaybackState(int state);
+	/// Updates the counter and seek bar from the player.
+	void setPlaybackPosition(std::int64_t positionMs, std::int64_t durationMs);
+	/// Disables transport when no audio output device exists.
+	void setPlaybackAvailable(bool available, const QString& deviceName);
+
 signals:
 	void analyseRequested(FileId file);
-	void sweepToggled(bool sweeping);
+	void playPauseRequested();
+	void stopRequested();
+	void seekRequested(double fraction);
+	void volumeChanged(double volume);
 
 private:
 	void updateMarquee();
@@ -150,7 +161,12 @@ private:
 	QLabel* m_marqueeLabel = nullptr;
 	QLabel* m_specBadges = nullptr;
 	QLabel* m_stateBadges = nullptr;
-	QPushButton* m_sweepButton = nullptr;
+	QPushButton* m_playButton = nullptr;
+	QPushButton* m_stopButton = nullptr;
+	QSlider* m_seekSlider = nullptr;
+	QSlider* m_volumeSlider = nullptr;
+	QLabel* m_deviceLabel = nullptr;
+	bool m_seeking = false;
 	QString m_marqueeText;
 	int m_marqueeOffset = 0;
 	double m_position = 0.0;

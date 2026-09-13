@@ -23,6 +23,8 @@ add_executable(resonance-desktop WIN32 MACOSX_BUNDLE
 	src/VfdSpectrumWidget.hpp
 	src/Workbench.cpp
 	src/Workbench.hpp
+	src/AudioPlayer.cpp
+	src/AudioPlayer.hpp
 )
 
 target_link_libraries(resonance-desktop
@@ -32,6 +34,8 @@ target_link_libraries(resonance-desktop
 		Qt6::Core
 		Qt6::Gui
 		Qt6::Widgets
+		Qt6::Multimedia
+		minimp3
 )
 
 ml_apply_common_options(resonance-desktop)

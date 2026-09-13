@@ -7,6 +7,7 @@
 #pragma once
 
 #include "AlbumReviewWidget.hpp"
+#include "AudioPlayer.hpp"
 #include "TaskRunner.hpp"
 #include "Theme.hpp"
 #include "VfdSpectrumWidget.hpp"
@@ -87,6 +88,11 @@ private slots:
 	void onTrackActivated(const QModelIndex& index);
 	void onExplorerFilter(const TrackFilter& filter);
 	void onAnalyseSpectrum(FileId file);
+	void onPlayPause();
+	void onStop();
+	void onSeek(double fraction);
+	void onPlayerPosition(qint64 positionMs, qint64 durationMs);
+	void onPlayerState(ml::desktop::PlaybackState state);
 	void onAlbumActivated(const QModelIndex& index);
 	void onRefreshCoverage();
 
@@ -106,6 +112,10 @@ private:
 
 	std::unique_ptr<Library> m_library;
 	TaskRunner* m_runner = nullptr;
+	AudioPlayer* m_player = nullptr;
+	/// The file currently loaded into the player, so selecting a row does not
+	/// re-decode a track that is already playing.
+	FileId m_loadedForPlayback;
 
 	QTabWidget* m_tabs = nullptr;
 

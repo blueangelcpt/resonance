@@ -2,8 +2,9 @@
 #include "mlinfra/AudioAnalysis.hpp"
 #include "mlinfra/Hashing.hpp"
 
+// MINIMP3_FLOAT_OUTPUT is set on the minimp3 interface target so every
+// translation unit sees the same sample type.
 #define MINIMP3_IMPLEMENTATION
-#define MINIMP3_FLOAT_OUTPUT
 #include <minimp3.h>
 
 #include <algorithm>
