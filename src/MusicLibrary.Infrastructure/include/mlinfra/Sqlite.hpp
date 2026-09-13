@@ -105,6 +105,12 @@ private:
 
 /// A transaction. Rolls back on destruction unless committed, so an exception or
 /// an early return can never leave a half-applied change set.
+///
+/// Nesting is supported. SQLite has no nested BEGIN, so an inner transaction
+/// becomes a SAVEPOINT: committing it releases the savepoint and rolling it back
+/// unwinds to it, leaving the outer transaction intact. Without this, a
+/// repository method that opens its own transaction would fail whenever a caller
+/// had already opened one -- which is exactly what a batched scan does.
 class Transaction {
 public:
 	enum class Kind { Deferred, Immediate };
@@ -121,11 +127,16 @@ public:
 	void rollback();
 	bool active() const { return m_db != nullptr && !m_finished; }
 
+	/// True when this is a savepoint inside an outer transaction.
+	bool isNested() const { return !m_savepointName.empty(); }
+
 private:
 	friend class Database;
-	explicit Transaction(Database* db) : m_db(db) {}
+	Transaction(Database* db, std::string savepointName)
+		: m_db(db), m_savepointName(std::move(savepointName)) {}
 
 	Database* m_db = nullptr;
+	std::string m_savepointName;
 	bool m_finished = false;
 };
 
@@ -179,11 +190,16 @@ public:
 	/// Last SQLite error message for this connection.
 	std::string lastError() const;
 
+	/// Nesting depth of open transactions. 0 means none.
+	int transactionDepth() const { return m_transactionDepth; }
+
 private:
 	friend class Transaction;
 
 	sqlite3* m_db = nullptr;
 	std::filesystem::path m_path;
+	int m_transactionDepth = 0;
+	int m_nextSavepoint = 0;
 };
 
 /// Applies versioned schema migrations. A downgrade is detected and refused
@@ -191,7 +207,7 @@ private:
 class SchemaMigrator {
 public:
 	/// Schema version this build understands.
-	static constexpr int kCurrentVersion = 1;
+	static constexpr int kCurrentVersion = 2;
 
 	struct Migration {
 		int version = 0;

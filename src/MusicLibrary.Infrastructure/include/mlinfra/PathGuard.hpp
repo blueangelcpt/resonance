@@ -153,7 +153,7 @@ public:
 	/// must be on the same filesystem as the final destination so publication can
 	/// be an atomic same-filesystem rename.
 	static Result<ScopedTempFile> createIn(const PathGuard& guard, const std::filesystem::path& directory,
-		std::string_view prefix = "mp3tool-");
+		std::string_view prefix = "resonance-");
 
 	const std::filesystem::path& path() const { return m_path; }
 	bool valid() const { return !m_path.empty(); }

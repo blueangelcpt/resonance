@@ -506,11 +506,23 @@ CREATE VIRTUAL TABLE file_search USING fts5(
 );
 )SQL";
 
+/// Migration 002.
+///
+/// Whether a group needs human review is a policy decision made in
+/// AlbumResolverCore, not a property of its flag string: some flags are
+/// advisory. Recomputing that policy in SQL would duplicate it and let the two
+/// drift, so the decision is stored alongside the group and indexed.
+constexpr std::string_view kMigration002 = R"SQL(
+ALTER TABLE albums ADD COLUMN needs_review INTEGER NOT NULL DEFAULT 1;
+CREATE INDEX idx_albums_needs_review ON albums(needs_review);
+)SQL";
+
 } // namespace
 
 const std::vector<SchemaMigrator::Migration>& SchemaMigrator::migrations() {
 	static const std::vector<Migration> kMigrations = {
 		Migration{1, "initial catalogue schema", kMigration001},
+		Migration{2, "store the album review decision rather than deriving it in SQL", kMigration002},
 	};
 	return kMigrations;
 }

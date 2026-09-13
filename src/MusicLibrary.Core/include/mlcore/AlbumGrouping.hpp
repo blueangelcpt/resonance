@@ -54,6 +54,14 @@ enum class AlbumFlag {
 
 std::string_view toString(AlbumFlag f);
 
+/// True when a flag is informational rather than a reason to stop and review.
+///
+/// A single-track group is a normal release: a collection full of singles would
+/// otherwise report every one of them as needing attention, burying the groups
+/// that genuinely have a problem. Measured on the 3240-file test collection,
+/// treating these as review items flagged 1572 of 1613 groups.
+bool isAdvisoryFlag(AlbumFlag f);
+
 /// A provisional album. "Provisional" is deliberate: identity is proposed, and
 /// confirming a specific release or edition requires provider evidence.
 struct ProvisionalAlbum {
@@ -74,7 +82,14 @@ struct ProvisionalAlbum {
 	bool isCompilation = false;
 	Confidence identityConfidence = Confidence::Unknown;
 
-	bool needsReview() const { return !flags.empty() || identityConfidence <= Confidence::Weak; }
+	/// True when a human needs to look at this group before it is organised.
+	/// Advisory flags do not by themselves qualify.
+	bool needsReview() const {
+		for (auto flag : flags) {
+			if (!isAdvisoryFlag(flag)) return true;
+		}
+		return identityConfidence <= Confidence::Weak;
+	}
 };
 
 struct GroupingOptions {
@@ -106,7 +121,11 @@ public:
 	const GroupingOptions& options() const { return m_options; }
 
 private:
-	void analyseGroup(ProvisionalAlbum& album, const std::vector<const GroupingInput*>& members) const;
+	/// `directoryGroupCount` is how many distinct groups share this group's
+	/// directory, which decides whether the folder name says anything about the
+	/// album title.
+	void analyseGroup(ProvisionalAlbum& album, const std::vector<const GroupingInput*>& members,
+		std::size_t directoryGroupCount) const;
 
 	GroupingOptions m_options;
 };

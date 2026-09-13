@@ -149,6 +149,9 @@ std::string TagFrame::key() const {
 		k += ":lang=";
 		k += language;
 	}
+	// Only a genuine duplicate carries an ordinal. The reader counts ordinals per
+	// discriminated key, so the first frame with a given id/owner/description is
+	// always 0 and its key stays stable when a sibling is removed.
 	if (ordinal > 0) {
 		k += ":#";
 		k += std::to_string(ordinal);

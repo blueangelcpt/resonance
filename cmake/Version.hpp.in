@@ -10,6 +10,8 @@
 namespace ml::version {
 
 inline constexpr std::string_view kProjectName = "@PROJECT_NAME@";
+/// Lowercase command name, used for the CLI binary and usage text.
+inline constexpr std::string_view kCommandName = "resonance";
 inline constexpr std::string_view kVersion = "@PROJECT_VERSION@";
 inline constexpr int kMajor = @PROJECT_VERSION_MAJOR@;
 inline constexpr int kMinor = @PROJECT_VERSION_MINOR@;

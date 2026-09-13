@@ -69,11 +69,19 @@ Statement& Statement::bind(int index, double value) {
 }
 
 Statement& Statement::bind(int index, std::string_view value) {
-	if (m_statement) {
-		// SQLITE_TRANSIENT: SQLite copies the text, so the caller's buffer does
-		// not have to outlive the bind.
-		sqlite3_bind_text(m_statement, index, value.data(), static_cast<int>(value.size()), SQLITE_TRANSIENT);
-	}
+	if (!m_statement) return *this;
+
+	// A default-constructed string_view has a null data pointer, and
+	// sqlite3_bind_text treats a null pointer as SQL NULL regardless of the
+	// length. Passing `{}` for a NOT NULL column would therefore fail the
+	// constraint rather than storing an empty string, which is what the caller
+	// meant. Bind the empty string explicitly.
+	static constexpr char kEmpty[] = "";
+	const char* data = value.data() ? value.data() : kEmpty;
+
+	// SQLITE_TRANSIENT: SQLite copies the text, so the caller's buffer does not
+	// have to outlive the bind.
+	sqlite3_bind_text(m_statement, index, data, static_cast<int>(value.size()), SQLITE_TRANSIENT);
 	return *this;
 }
 
@@ -193,7 +201,8 @@ Transaction::~Transaction() {
 }
 
 Transaction::Transaction(Transaction&& other) noexcept
-	: m_db(other.m_db), m_finished(other.m_finished) {
+	: m_db(other.m_db), m_savepointName(std::move(other.m_savepointName)),
+	  m_finished(other.m_finished) {
 	other.m_db = nullptr;
 	other.m_finished = true;
 }
@@ -202,6 +211,7 @@ Transaction& Transaction::operator=(Transaction&& other) noexcept {
 	if (this != &other) {
 		rollback();
 		m_db = other.m_db;
+		m_savepointName = std::move(other.m_savepointName);
 		m_finished = other.m_finished;
 		other.m_db = nullptr;
 		other.m_finished = true;
@@ -214,13 +224,28 @@ Status Transaction::commit() {
 		return Status(Error{ErrorCode::Internal, "commit on an inactive transaction"});
 	}
 	m_finished = true;
+	if (m_db->m_transactionDepth > 0) --m_db->m_transactionDepth;
+
+	if (!m_savepointName.empty()) {
+		// Releasing a savepoint merges it into the enclosing transaction.
+		return m_db->executeScript("RELEASE " + m_savepointName + ";");
+	}
 	return m_db->executeScript("COMMIT;");
 }
 
 void Transaction::rollback() {
 	if (!m_db || m_finished) return;
 	m_finished = true;
+	if (m_db->m_transactionDepth > 0) --m_db->m_transactionDepth;
+
 	// Best effort: a rollback failure during stack unwinding must not throw.
+	if (!m_savepointName.empty()) {
+		// Unwind to the savepoint and discard it, leaving the outer transaction
+		// open and usable.
+		(void)m_db->executeScript("ROLLBACK TO " + m_savepointName + ";");
+		(void)m_db->executeScript("RELEASE " + m_savepointName + ";");
+		return;
+	}
 	(void)m_db->executeScript("ROLLBACK;");
 }
 
@@ -233,8 +258,10 @@ Database::~Database() {
 }
 
 Database::Database(Database&& other) noexcept
-	: m_db(other.m_db), m_path(std::move(other.m_path)) {
+	: m_db(other.m_db), m_path(std::move(other.m_path)),
+	  m_transactionDepth(other.m_transactionDepth), m_nextSavepoint(other.m_nextSavepoint) {
 	other.m_db = nullptr;
+	other.m_transactionDepth = 0;
 }
 
 Database& Database::operator=(Database&& other) noexcept {
@@ -242,7 +269,10 @@ Database& Database::operator=(Database&& other) noexcept {
 		if (m_db) sqlite3_close(m_db);
 		m_db = other.m_db;
 		m_path = std::move(other.m_path);
+		m_transactionDepth = other.m_transactionDepth;
+		m_nextSavepoint = other.m_nextSavepoint;
 		other.m_db = nullptr;
+		other.m_transactionDepth = 0;
 	}
 	return *this;
 }
@@ -331,11 +361,22 @@ Status Database::executeScript(std::string_view sql) {
 }
 
 Result<Transaction> Database::begin(Transaction::Kind kind) {
+	// An inner transaction becomes a savepoint. SQLite rejects a nested BEGIN,
+	// and a repository method that needs atomicity should not have to know
+	// whether its caller already opened one.
+	if (m_transactionDepth > 0) {
+		const std::string name = "ml_sp_" + std::to_string(m_nextSavepoint++);
+		if (auto status = executeScript("SAVEPOINT " + name + ";"); !status) return status.error();
+		++m_transactionDepth;
+		return Transaction(this, name);
+	}
+
 	const char* sql = (kind == Transaction::Kind::Immediate)
 		? "BEGIN IMMEDIATE;"
 		: "BEGIN;";
 	if (auto status = executeScript(sql); !status) return status.error();
-	return Transaction(this);
+	++m_transactionDepth;
+	return Transaction(this, {});
 }
 
 std::int64_t Database::lastInsertRowId() const {

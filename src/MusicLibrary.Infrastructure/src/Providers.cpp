@@ -16,7 +16,8 @@ std::string urlEncode(std::string_view text) {
 	static constexpr char kHex[] = "0123456789ABCDEF";
 	std::string out;
 	out.reserve(text.size() * 3);
-	for (unsigned char c : text) {
+	for (char raw : text) {
+		const unsigned char c = static_cast<unsigned char>(raw);
 		if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
 			out.push_back(static_cast<char>(c));
 		} else {

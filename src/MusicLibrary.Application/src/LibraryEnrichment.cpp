@@ -935,7 +935,7 @@ Status Library::writeNamingConventionReport(const fs::path& destination) const {
 	const NamingConformity& c = conformity.value();
 
 	out << "# Naming convention: measured evidence\n\n";
-	out << "Generated " << nowIso8601() << " by mp3-tool.\n\n";
+	out << "Generated " << nowIso8601() << " by Resonance.\n\n";
 	out << "This report measures the collection against the user-confirmed template. The template "
 		   "itself is a specification supplied by the user; the figures below are what was actually "
 		   "observed, and the two must not be confused.\n\n";

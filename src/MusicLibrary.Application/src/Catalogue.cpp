@@ -672,7 +672,8 @@ Status Catalogue::replaceAlbums(const std::vector<ProvisionalAlbum>& albums) {
 	auto insert = m_database.prepare(
 		"INSERT INTO albums (group_key, album, album_artist, release_date, edition_qualifier, "
 		"musicbrainz_album_id, disc_count, observed_track_count, declared_track_total, "
-		"is_compilation, identity_confidence, flags, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);");
+		"is_compilation, identity_confidence, flags, updated_at, needs_review) "
+		"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
 	if (!insert) return Status(insert.error());
 
 	auto track = m_database.prepare(
@@ -696,7 +697,7 @@ Status Catalogue::replaceAlbums(const std::vector<ProvisionalAlbum>& albums) {
 		s.bindAll(album.groupKey, album.album, album.albumArtist, album.date, album.editionQualifier,
 			album.musicBrainzAlbumId, album.discCount, album.observedTrackCount,
 			album.declaredTrackTotal, album.isCompilation, toString(album.identityConfidence),
-			joinList(flagNames), timestamp);
+			joinList(flagNames), timestamp, album.needsReview());
 		if (auto status = s.step(); !status) return Status(status.error());
 
 		const std::int64_t albumId = m_database.lastInsertRowId();
@@ -762,9 +763,7 @@ constexpr std::string_view kAlbumColumns =
 Result<std::vector<ProvisionalAlbum>> Catalogue::listAlbums(bool onlyNeedingReview, std::int64_t limit,
 	std::int64_t offset) const {
 	std::string sql = "SELECT " + std::string(kAlbumColumns) + " FROM albums";
-	if (onlyNeedingReview) {
-		sql += " WHERE flags <> '' OR identity_confidence IN ('unknown', 'weak')";
-	}
+	if (onlyNeedingReview) sql += " WHERE needs_review = 1";
 	sql += " ORDER BY album_artist, album";
 	if (limit > 0) sql += " LIMIT ?1 OFFSET ?2";
 	sql += ";";
@@ -865,7 +864,7 @@ Result<std::optional<AlbumId>> Catalogue::albumForFile(FileId file) const {
 
 Result<std::int64_t> Catalogue::countAlbums(bool onlyNeedingReview) const {
 	std::string sql = "SELECT COUNT(*) FROM albums";
-	if (onlyNeedingReview) sql += " WHERE flags <> '' OR identity_confidence IN ('unknown', 'weak')";
+	if (onlyNeedingReview) sql += " WHERE needs_review = 1";
 	sql += ";";
 
 	auto statement = const_cast<Database&>(m_database).prepare(sql);
@@ -1393,8 +1392,7 @@ Result<CoverageReport> Catalogue::coverageReport() const {
 		{&report.totalBytes, "SELECT COALESCE(SUM(size_bytes), 0) FROM files;"},
 		{&report.totalDurationMs, "SELECT COALESCE(SUM(duration_ms), 0) FROM files;"},
 		{&report.albumCount, "SELECT COUNT(*) FROM albums;"},
-		{&report.albumsNeedingReview,
-			"SELECT COUNT(*) FROM albums WHERE flags <> '' OR identity_confidence IN ('unknown','weak');"},
+		{&report.albumsNeedingReview, "SELECT COUNT(*) FROM albums WHERE needs_review = 1;"},
 	};
 	for (const auto& entry : kScalars) {
 		auto value = scalar(db, entry.sql);

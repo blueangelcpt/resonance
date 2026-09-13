@@ -25,6 +25,20 @@ std::string_view toString(AlbumFlag f) {
 	return "missing_track_numbers";
 }
 
+bool isAdvisoryFlag(AlbumFlag f) {
+	switch (f) {
+		// A release with one track is a single, not an anomaly.
+		case AlbumFlag::SingleTrackGroup:
+		// Compilation detection changes the naming plan but is not an error.
+		case AlbumFlag::LikelyCompilation:
+		// The folder holding a release need not be named after it.
+		case AlbumFlag::FolderTitleMismatch:
+			return true;
+		default:
+			return false;
+	}
+}
+
 AlbumResolverCore::AlbumResolverCore(GroupingOptions options) : m_options(std::move(options)) {}
 
 bool AlbumResolverCore::sameEdition(std::string_view titleA, std::string_view titleB) const {
@@ -87,7 +101,8 @@ std::string AlbumResolverCore::groupKeyFor(const GroupingInput& in) const {
 	return key;
 }
 
-void AlbumResolverCore::analyseGroup(ProvisionalAlbum& album, const std::vector<const GroupingInput*>& members) const {
+void AlbumResolverCore::analyseGroup(ProvisionalAlbum& album,
+	const std::vector<const GroupingInput*>& members, std::size_t directoryGroupCount) const {
 	std::set<std::string> albumArtists;
 	std::set<std::string> trackArtists;
 	std::set<std::string> dates;
@@ -196,9 +211,13 @@ void AlbumResolverCore::analyseGroup(ProvisionalAlbum& album, const std::vector<
 				+ std::to_string(members.size()) + " tracks", true});
 	}
 
-	// Folder name against album title: a mismatch is worth surfacing because the
-	// user's library is organised by album folder.
-	if (!album.album.empty() && !members.empty()) {
+	// Folder name against album title.
+	//
+	// Only meaningful when the directory holds exactly this one release. A folder
+	// such as "VA - New Music Releases Week 07" contains dozens of distinct
+	// singles, and its name is a container label rather than an album title, so
+	// comparing the two would flag every track in it.
+	if (!album.album.empty() && !members.empty() && directoryGroupCount == 1) {
 		const std::string& dir = members.front()->relativeDirectory;
 		const std::size_t slash = dir.find_last_of('/');
 		const std::string leaf = (slash == std::string::npos) ? dir : dir.substr(slash + 1);
@@ -223,11 +242,16 @@ void AlbumResolverCore::analyseGroup(ProvisionalAlbum& album, const std::vector<
 	} else if (!album.musicBrainzAlbumId.empty()) {
 		album.identityConfidence = Confidence::Strong;
 		album.evidence.push_back({"release_id", "all files agree on one MusicBrainz release id", true});
-	} else if (!album.album.empty() && !album.albumArtist.empty() && missingTrackNumbers == 0
-		&& members.size() > 1) {
+	} else if (!album.album.empty() && !album.albumArtist.empty() && missingTrackNumbers == 0) {
+		// Group size is deliberately not a condition here. A single is one track
+		// and is no less identifiable for it; requiring more than one member made
+		// every single in the test collection weak by construction.
 		album.identityConfidence = Confidence::Moderate;
 		album.evidence.push_back({"consistent_tags",
-			"album, album artist and a complete track numbering agree across the group", true});
+			members.size() > 1
+				? "album, album artist and a complete track numbering agree across the group"
+				: "a single-track release with a complete album, album artist and track number",
+			true});
 	} else {
 		album.identityConfidence = Confidence::Weak;
 	}
@@ -247,6 +271,14 @@ std::vector<ProvisionalAlbum> AlbumResolverCore::group(const std::vector<Groupin
 		} else {
 			it->second.push_back(&in);
 		}
+	}
+
+	// How many distinct groups landed in each directory. A directory holding many
+	// groups is a container folder, not an album folder.
+	std::map<std::string, std::size_t> groupsPerDirectory;
+	for (const auto& key : keyOrder) {
+		const auto& members = buckets[key];
+		if (!members.empty()) ++groupsPerDirectory[members.front()->relativeDirectory];
 	}
 
 	std::vector<ProvisionalAlbum> albums;
@@ -295,7 +327,9 @@ std::vector<ProvisionalAlbum> AlbumResolverCore::group(const std::vector<Groupin
 
 		for (const GroupingInput* in : members) album.files.push_back(in->fileId);
 
-		analyseGroup(album, members);
+		const std::size_t directoryGroups = members.empty() ? 1
+			: groupsPerDirectory[members.front()->relativeDirectory];
+		analyseGroup(album, members, directoryGroups);
 		albums.push_back(std::move(album));
 	}
 

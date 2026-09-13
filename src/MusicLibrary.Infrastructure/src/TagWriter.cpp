@@ -352,9 +352,14 @@ Result<TagWriteResult> TagWriter::writeToNewFile(const fs::path& sourcePath, con
 	// known after the raw frame pass. The size accounting needs it.
 	(void)Mp3Container::readRawFrames(sourcePath, layout);
 
-	if (layout.audioLength <= 0) {
+	// `valid` means a confirmed MPEG frame sync was found. Checking only the
+	// length is not enough: for a file that is not an MP3 at all, the "audio"
+	// range is simply the whole file, and the writer would happily wrap arbitrary
+	// bytes in an ID3 tag and call the result a track.
+	if (!layout.valid || layout.audioLength <= 0) {
 		return Error{ErrorCode::Unsupported,
-			"no MPEG payload was located in " + sourcePath.string() + "; refusing to rewrite it"};
+			"no confirmed MPEG audio frame was located in " + sourcePath.string()
+				+ "; refusing to rewrite it"};
 	}
 
 	TagWriteResult result;

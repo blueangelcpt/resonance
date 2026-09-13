@@ -55,22 +55,22 @@ fs::path LibraryConfig::defaultDataDirectory() {
 	// survive an application update, so it never lives beside the executable.
 #ifdef _WIN32
 	if (const char* appData = std::getenv("LOCALAPPDATA")) {
-		return fs::path(appData) / "mp3-tool";
+		return fs::path(appData) / "Resonance";
 	}
-	return fs::current_path() / "mp3-tool-data";
+	return fs::current_path() / "resonance-data";
 #elif defined(__APPLE__)
 	if (const char* home = std::getenv("HOME")) {
-		return fs::path(home) / "Library" / "Application Support" / "mp3-tool";
+		return fs::path(home) / "Library" / "Application Support" / "Resonance";
 	}
-	return fs::current_path() / "mp3-tool-data";
+	return fs::current_path() / "resonance-data";
 #else
 	if (const char* dataHome = std::getenv("XDG_DATA_HOME")) {
-		return fs::path(dataHome) / "mp3-tool";
+		return fs::path(dataHome) / "resonance";
 	}
 	if (const char* home = std::getenv("HOME")) {
-		return fs::path(home) / ".local" / "share" / "mp3-tool";
+		return fs::path(home) / ".local" / "share" / "resonance";
 	}
-	return fs::current_path() / "mp3-tool-data";
+	return fs::current_path() / "resonance-data";
 #endif
 }
 

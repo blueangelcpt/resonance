@@ -80,9 +80,11 @@ TagContainer mapId3v2Version(unsigned int major) {
 /// decision, not a value".
 std::string joinValues(const TagLib::StringList& values) {
 	std::string out;
+	// TagLib's List indexes with an unsigned type; staying unsigned throughout
+	// avoids a signed/unsigned round trip on every element.
 	for (unsigned int i = 0; i < values.size(); ++i) {
 		if (i > 0) out.push_back('\0');
-		out += toStd(values[static_cast<int>(i)]);
+		out += toStd(values[i]);
 	}
 	return out;
 }
@@ -189,9 +191,24 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 		snapshot.readWarnings.push_back("TagLib could not open the file; only the raw inventory is available");
 	}
 
+	// Ordinals disambiguate frames that are otherwise identical, and they are
+	// counted per *discriminated* key rather than per frame id.
+	//
+	// Counting per id makes the ordinal positional: removing the first of two
+	// TXXX frames renumbers the survivor from 1 to 0, its key changes, and a
+	// preservation check then reports an untouched frame as lost and re-added.
+	// Keying on the discriminator keeps the survivor's identity stable.
 	std::map<std::string, int> ordinals;
-	const auto nextOrdinal = [&ordinals](const std::string& id) {
-		return ordinals[id]++;
+	const auto assignOrdinal = [&ordinals](TagFrame& frame) {
+		std::string discriminator = std::string(toString(frame.container)) + "/" + frame.id;
+		discriminator += "|" + frame.owner;
+		discriminator += "|" + frame.description;
+		discriminator += "|" + frame.language;
+		frame.ordinal = ordinals[discriminator]++;
+	};
+	const auto pushFrame = [&](TagFrame& frame) {
+		assignOrdinal(frame);
+		snapshot.frames.push_back(std::move(frame));
 	};
 
 	if (file.isValid() && file.hasID3v2Tag()) {
@@ -207,7 +224,6 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 			out.container = snapshot.primaryContainer;
 			out.id = toStd(frame->frameID());
 			out.rawSize = frame->size() + frame->headerSize();
-			out.ordinal = nextOrdinal(out.id);
 
 			// --- Attached picture ------------------------------------------
 			if (const auto* picture = dynamic_cast<const TagLib::ID3v2::AttachedPictureFrame*>(frame)) {
@@ -221,7 +237,6 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 				embedded.mimeType = toStd(picture->mimeType());
 				embedded.description = toStd(picture->description());
 				embedded.byteLength = picture->picture().size();
-				embedded.frameOrdinal = out.ordinal;
 
 				const TagLib::ByteVector& bytes = picture->picture();
 				if (bytes.size() > 0) {
@@ -243,10 +258,11 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 						embedded.contentSha256 = Sha256::hashBytes(raw, bytes.size());
 					}
 				}
-				snapshot.pictures.push_back(std::move(embedded));
-
 				if (options.retainFramePayloads) out.binary = toBytes(picture->picture());
-				snapshot.frames.push_back(std::move(out));
+				assignOrdinal(out);
+				embedded.frameOrdinal = out.ordinal;
+				snapshot.pictures.push_back(std::move(embedded));
+				pushFrame(out);
 				continue;
 			}
 
@@ -258,9 +274,9 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 				// fieldList()[0] is the description; the values follow it.
 				const TagLib::StringList values = userText->fieldList();
 				TagLib::StringList tail;
-				for (unsigned int i = 1; i < values.size(); ++i) tail.append(values[static_cast<int>(i)]);
+				for (unsigned int i = 1; i < values.size(); ++i) tail.append(values[i]);
 				out.value = joinValues(tail);
-				snapshot.frames.push_back(std::move(out));
+				pushFrame(out);
 				continue;
 			}
 
@@ -269,7 +285,7 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 				out.interpreted = true;
 				out.encoding = mapEncoding(text->textEncoding());
 				out.value = joinValues(text->fieldList());
-				snapshot.frames.push_back(std::move(out));
+				pushFrame(out);
 				continue;
 			}
 
@@ -280,7 +296,7 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 				out.language = toStd(comment->language());
 				out.encoding = mapEncoding(comment->textEncoding());
 				out.value = toStd(comment->text());
-				snapshot.frames.push_back(std::move(out));
+				pushFrame(out);
 				continue;
 			}
 
@@ -291,7 +307,7 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 				out.language = toStd(lyrics->language());
 				out.encoding = mapEncoding(lyrics->textEncoding());
 				out.value = toStd(lyrics->text());
-				snapshot.frames.push_back(std::move(out));
+				pushFrame(out);
 				continue;
 			}
 
@@ -300,7 +316,7 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 				out.interpreted = true;
 				out.owner = toStd(priv->owner());
 				if (options.retainFramePayloads) out.binary = toBytes(priv->data());
-				snapshot.frames.push_back(std::move(out));
+				pushFrame(out);
 				continue;
 			}
 
@@ -310,7 +326,7 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 				out.owner = toStd(ufid->owner());
 				out.value = toStd(ufid->identifier());
 				if (options.retainFramePayloads) out.binary = toBytes(ufid->identifier());
-				snapshot.frames.push_back(std::move(out));
+				pushFrame(out);
 				continue;
 			}
 
@@ -322,7 +338,7 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 				// needs to know the frame exists and could be interpreted.
 				out.value = "relative volume adjustment";
 				if (options.retainFramePayloads) out.binary = toBytes(rva->render());
-				snapshot.frames.push_back(std::move(out));
+				pushFrame(out);
 				continue;
 			}
 
@@ -331,7 +347,7 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 				out.interpreted = true;
 				out.owner = toStd(popm->email());
 				out.value = std::to_string(popm->rating()) + "/" + std::to_string(popm->counter());
-				snapshot.frames.push_back(std::move(out));
+				pushFrame(out);
 				continue;
 			}
 
@@ -348,7 +364,7 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 				}
 			}
 			out.value = toStd(frame->toString());
-			snapshot.frames.push_back(std::move(out));
+			pushFrame(out);
 		}
 	}
 
@@ -360,7 +376,6 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 			TagFrame out;
 			out.container = TagContainer::Apev2;
 			out.id = toStd(key);
-			out.ordinal = nextOrdinal("APE/" + out.id);
 			out.interpreted = true;
 			out.rawSize = static_cast<std::size_t>(item.size());
 			if (item.type() == TagLib::APE::Item::Binary) {
@@ -369,7 +384,7 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 			} else {
 				out.value = joinValues(item.values());
 			}
-			snapshot.frames.push_back(std::move(out));
+			pushFrame(out);
 		}
 		if (snapshot.primaryContainer == TagContainer::Unknown) {
 			snapshot.primaryContainer = TagContainer::Apev2;
@@ -392,7 +407,7 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 			out.encoding = TextEncoding::Latin1;
 			out.interpreted = true;
 			out.rawSize = size;
-			snapshot.frames.push_back(std::move(out));
+			pushFrame(out);
 		};
 		addV1("TITLE", toStd(v1->title()), 30);
 		addV1("ARTIST", toStd(v1->artist()), 30);
@@ -417,7 +432,7 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 		out.value = std::to_string(result.layout.audio.encoderDelay) + "/"
 			+ std::to_string(result.layout.audio.encoderPadding);
 		out.description = "encoder delay/padding";
-		snapshot.frames.push_back(std::move(out));
+		pushFrame(out);
 		snapshot.containers.push_back(TagContainer::LameHeader);
 	}
 

@@ -270,7 +270,7 @@ void fftRadix2(std::vector<float>& real, std::vector<float>& imaginary, bool inv
 TempoAnalyzer::TempoAnalyzer(TempoAnalyzerOptions options) : m_options(std::move(options)) {}
 
 std::string TempoAnalyzer::engine() const {
-	return "mp3tool-spectralflux/1 (" + Mp3Decoder::engineIdentifier() + ")";
+	return "resonance-spectralflux/1 (" + Mp3Decoder::engineIdentifier() + ")";
 }
 
 std::string TempoAnalyzer::settingsHash() const {

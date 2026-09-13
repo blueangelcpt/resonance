@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Resonance
+GenericName=MP3 Library Manager
+Comment=Catalogue, enrich and organise an MP3 collection without modifying the originals
+Exec=resonance-desktop
+Icon=resonance
+Terminal=false
+Categories=AudioVideo;Audio;Music;
+Keywords=mp3;music;library;tags;id3;artwork;bpm;lyrics;
+StartupNotify=true

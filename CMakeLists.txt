@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 
 # Single versioned source for every platform artifact (DIST-001, REL-001).
-project(mp3-tool
+project(Resonance
 	VERSION 0.1.0
-	DESCRIPTION "MP3 Library manager: catalogue, artwork, BPM, lyrics, privacy and gain cleaning, safe organisation"
+	DESCRIPTION "Resonance: MP3 library catalogue, artwork, BPM, lyrics, privacy and gain cleaning, and safe organisation"
 	HOMEPAGE_URL "https://github.com/blueangelcpt/mp3-tool"
 	LANGUAGES CXX
 )
@@ -107,8 +107,12 @@ if(ML_BUILD_DESKTOP)
 endif()
 
 # Vendored, pinned single-header MP3 decoder (CC0). See native/DEPENDENCIES.md.
+#
+# SYSTEM marks it as a system include so this project's strict warning set does
+# not fire on code it does not own. Our own translation units still compile at
+# full strictness.
 add_library(minimp3 INTERFACE)
-target_include_directories(minimp3 INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/minimp3")
+target_include_directories(minimp3 SYSTEM INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/minimp3")
 
 # ---------------------------------------------------------------------------
 # Targets
@@ -139,7 +143,7 @@ include(Packaging)
 # Configuration summary
 # ---------------------------------------------------------------------------
 message(STATUS "")
-message(STATUS "mp3-tool ${PROJECT_VERSION}")
+message(STATUS "Resonance ${PROJECT_VERSION}")
 message(STATUS "  build type .......... ${CMAKE_BUILD_TYPE}")
 message(STATUS "  desktop (Qt 6) ...... ${ML_BUILD_DESKTOP}")
 message(STATUS "  cli ................. ${ML_BUILD_CLI}")
