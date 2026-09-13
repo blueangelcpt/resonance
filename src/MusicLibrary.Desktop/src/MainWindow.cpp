@@ -61,6 +61,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 		appendLog(message);
 		statusBar()->showMessage(message, 8000);
 	});
+	// The live analyser reads the samples being handed to the output device and
+	// runs its own FFT, so the display is the audio you are hearing rather than
+	// a replay of an earlier analysis.
+	m_visualiserTimer = new QTimer(this);
+	m_visualiserTimer->setInterval(33);   // ~30 Hz
+	connect(m_visualiserTimer, &QTimer::timeout, this, [this]() {
+		if (!m_spectrum || m_player->state() != PlaybackState::Playing) return;
+		m_spectrum->pushLiveSamples(m_player->visualiserBlock(2048),
+			m_player->outputSampleRate());
+	});
+
 	connect(m_player, &AudioPlayer::outputDeviceChanged, this,
 		[this](bool available, const QString& name) {
 			if (m_deck) m_deck->setPlaybackAvailable(available, name);
@@ -442,7 +453,9 @@ void MainWindow::onStop() {
 
 void MainWindow::onSeek(double fraction) {
 	m_player->seek(fraction);
-	if (m_spectrum) m_spectrum->setPosition(fraction);
+	// In live mode the analyser shows the present moment and has no playhead to
+	// move; only the precomputed view needs repositioning.
+	if (m_spectrum && !m_spectrum->isLiveMode()) m_spectrum->setPosition(fraction);
 }
 
 void MainWindow::onPlayerPosition(qint64 positionMs, qint64 durationMs) {
@@ -455,14 +468,29 @@ void MainWindow::onPlayerPosition(qint64 positionMs, qint64 durationMs) {
 
 void MainWindow::onPlayerState(PlaybackState state) {
 	m_deck->setPlaybackState(static_cast<int>(state));
+
 	if (m_spectrum) {
-		// The analyser reads its own precomputed spectrogram; following the
-		// playhead is enough to keep it in step without re-running an FFT in the
-		// audio callback.
-		m_spectrum->setSweeping(false);
+		// While audio is playing the analyser runs live off the output samples.
+		// When it stops, it reverts to the precomputed spectrogram so the panel
+		// still shows something meaningful for the selected track.
+		m_spectrum->setLiveMode(state == PlaybackState::Playing);
 	}
+
 	if (state == PlaybackState::Playing) {
-		statusBar()->showMessage(QStringLiteral("Playing."), 3000);
+		m_visualiserTimer->start();
+		statusBar()->showMessage(QStringLiteral("Playing — %1")
+			.arg(m_player->formatDescription()), 4000);
+		if (m_spectrumTelemetry) {
+			m_spectrumTelemetry->setText(QStringLiteral(
+				"LIVE · FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · peak hold · out %1")
+				.arg(m_player->formatDescription()));
+		}
+	} else {
+		m_visualiserTimer->stop();
+		if (m_spectrumTelemetry) {
+			m_spectrumTelemetry->setText(QStringLiteral(
+				"FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
+		}
 	}
 }
 
@@ -842,6 +870,10 @@ void MainWindow::selectFirstTrack() {
 	onTrackActivated(first);
 }
 
+void MainWindow::playSelectedTrack() {
+	onPlayPause();
+}
+
 bool MainWindow::hasSelection() const {
 	return m_trackTable && m_trackTable->currentIndex().isValid();
 }
@@ -1191,7 +1223,7 @@ void MainWindow::onTrackActivated(const QModelIndex& index) {
 	// One selection drives the whole workbench.
 	if (m_deck) m_deck->showFile(*record);
 	if (m_inspector) m_inspector->showFile(record->id);
-	if (m_spectrum) {
+	if (m_spectrum && m_player->state() != PlaybackState::Playing) {
 		m_spectrum->setSweeping(false);
 		m_spectrum->clear(QStringLiteral("Press Analyse to decode this track's spectrum."));
 	}

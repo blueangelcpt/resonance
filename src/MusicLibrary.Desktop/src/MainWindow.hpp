@@ -16,6 +16,7 @@
 #include "mlapp/Library.hpp"
 
 #include <QMainWindow>
+#include <QTimer>
 
 #include <memory>
 
@@ -53,6 +54,9 @@ public:
 
 	/// Analyses the currently selected track's spectrum.
 	void analyseSelectedTrack();
+
+	/// Starts playback of the selected track.
+	void playSelectedTrack();
 
 	/// True when a track row is currently selected.
 	bool hasSelection() const;
@@ -113,6 +117,8 @@ private:
 	std::unique_ptr<Library> m_library;
 	TaskRunner* m_runner = nullptr;
 	AudioPlayer* m_player = nullptr;
+	/// Drives the live analyser from the audio actually being played.
+	QTimer* m_visualiserTimer = nullptr;
 	/// The file currently loaded into the player, so selecting a row does not
 	/// re-decode a track that is already playing.
 	FileId m_loadedForPlayback;

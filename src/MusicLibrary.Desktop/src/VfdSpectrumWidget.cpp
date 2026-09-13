@@ -188,6 +188,123 @@ void VfdSpectrumWidget::setPosition(double fraction) {
 	emit positionChanged(m_position);
 }
 
+namespace {
+/// The analysis window for the live path. 1024 at 44.1 kHz is ~23 ms, which is
+/// responsive enough to track a beat without flickering.
+constexpr std::size_t kLiveWindow = 1024;
+} // namespace
+
+void VfdSpectrumWidget::setLiveMode(bool live) {
+	if (m_liveMode == live) return;
+	m_liveMode = live;
+	if (live) {
+		// The sweep and the live feed are two ways of driving the same display;
+		// running both would fight over the level array.
+		setSweeping(false);
+		m_emptyReason = QStringLiteral("Waiting for audio…");
+	}
+	update();
+}
+
+void VfdSpectrumWidget::rebuildBands(int sampleRateHz) {
+	if (sampleRateHz <= 0 || m_bandEdgeRate == sampleRateHz) return;
+	m_bandEdgeRate = sampleRateHz;
+
+	const int bands = m_levels.empty() ? 96 : static_cast<int>(m_levels.size());
+	const double nyquist = sampleRateHz / 2.0;
+	const double lowHz = 30.0;
+	const double highHz = std::min(16000.0, nyquist * 0.98);
+
+	m_bandEdges.assign(static_cast<std::size_t>(bands) + 1, 0);
+	for (int b = 0; b <= bands; ++b) {
+		const double t = static_cast<double>(b) / bands;
+		const double hz = lowHz * std::pow(highHz / lowHz, t);
+		const double bin = hz * static_cast<double>(kLiveWindow) / sampleRateHz;
+		m_bandEdges[static_cast<std::size_t>(b)] = static_cast<std::size_t>(
+			std::clamp(bin, 1.0, static_cast<double>(kLiveWindow / 2 - 1)));
+	}
+
+	if (m_window.size() != kLiveWindow) {
+		m_window.resize(kLiveWindow);
+		for (std::size_t i = 0; i < kLiveWindow; ++i) {
+			m_window[i] = 0.5f * (1.0f - std::cos(2.0f * 3.14159265358979f
+				* static_cast<float>(i) / static_cast<float>(kLiveWindow - 1)));
+		}
+	}
+}
+
+void VfdSpectrumWidget::applyColumn(const std::vector<float>& column, float attack, float release) {
+	for (std::size_t i = 0; i < m_levels.size() && i < column.size(); ++i) {
+		const float target = column[i];
+		float& level = m_levels[i];
+		// Fast attack, slow release: how a real meter behaves, and what stops the
+		// display flickering between frames.
+		level = (target > level)
+			? level + (target - level) * attack
+			: level + (target - level) * release;
+
+		if (!m_peakHold) continue;
+		if (level >= m_peaks[i]) {
+			m_peaks[i] = level;
+			m_peakAge[i] = 0.0f;
+		} else {
+			m_peakAge[i] += 0.033f;
+			if (m_peakAge[i] > 0.7f) {
+				m_peaks[i] = std::max(level, m_peaks[i] - 0.018f);
+			}
+		}
+	}
+}
+
+void VfdSpectrumWidget::pushLiveSamples(const std::vector<float>& samples, int sampleRateHz) {
+	if (!m_liveMode) return;
+
+	constexpr int kBands = 96;
+	if (m_levels.size() != static_cast<std::size_t>(kBands)) {
+		m_levels.assign(kBands, 0.0f);
+		m_peaks.assign(kBands, 0.0f);
+		m_peakAge.assign(kBands, 0.0f);
+		m_bandEdgeRate = 0;
+	}
+	rebuildBands(sampleRateHz);
+	m_liveSampleRate = sampleRateHz;
+
+	if (samples.size() < kLiveWindow || m_bandEdges.empty()) {
+		// Not enough audio yet; decay towards silence rather than freezing.
+		applyColumn(std::vector<float>(static_cast<std::size_t>(kBands), 0.0f), 0.3f, 0.12f);
+		update();
+		return;
+	}
+
+	m_emptyReason.clear();
+
+	// Take the most recent window: the audio nearest the playhead.
+	std::vector<float> real(kLiveWindow);
+	std::vector<float> imaginary(kLiveWindow, 0.0f);
+	const std::size_t offset = samples.size() - kLiveWindow;
+	for (std::size_t i = 0; i < kLiveWindow; ++i) {
+		real[i] = samples[offset + i] * m_window[i];
+	}
+	fftRadix2(real, imaginary, false);
+
+	std::vector<float> column(static_cast<std::size_t>(kBands), 0.0f);
+	for (int b = 0; b < kBands; ++b) {
+		const std::size_t from = m_bandEdges[static_cast<std::size_t>(b)];
+		const std::size_t to = std::max(from + 1, m_bandEdges[static_cast<std::size_t>(b) + 1]);
+
+		float peak = 0.0f;
+		for (std::size_t bin = from; bin < to && bin < kLiveWindow / 2; ++bin) {
+			const float magnitude = std::sqrt(real[bin] * real[bin] + imaginary[bin] * imaginary[bin]);
+			peak = std::max(peak, magnitude);
+		}
+		column[static_cast<std::size_t>(b)] =
+			toNormalisedDb(peak * 4.0f / static_cast<float>(kLiveWindow));
+	}
+
+	applyColumn(column, 0.55f, 0.16f);
+	update();
+}
+
 void VfdSpectrumWidget::seedLevelsFromCurrentColumn() {
 	const std::vector<float>* column = currentColumn();
 	if (!column) return;
@@ -278,7 +395,7 @@ void VfdSpectrumWidget::paintEvent(QPaintEvent*) {
 
 	drawGraticule(painter, plot);
 
-	if (!m_spectrogram.valid()) {
+	if (!m_spectrogram.valid() && !(m_liveMode && !m_levels.empty())) {
 		drawEmpty(painter, plot);
 		drawAxes(painter, plot);
 		return;
@@ -311,7 +428,9 @@ void VfdSpectrumWidget::drawGraticule(QPainter& painter, const QRect& plot) cons
 }
 
 void VfdSpectrumWidget::drawMatrix(QPainter& painter, const QRect& plot) const {
-	const int bands = m_spectrogram.bandCount;
+	const int bands = m_liveMode
+		? static_cast<int>(m_levels.size())
+		: m_spectrogram.bandCount;
 	if (bands <= 0) return;
 
 	const int step = m_cellSize + m_cellGap;
@@ -352,7 +471,9 @@ void VfdSpectrumWidget::drawMatrix(QPainter& painter, const QRect& plot) const {
 		}
 	}
 
-	// Playhead.
+	// Playhead. In live mode the display is the present moment, so there is no
+	// position marker to draw.
+	if (m_liveMode) return;
 	const int playheadX = plot.left() + static_cast<int>(m_position * plot.width());
 	QColor playhead = theme::kNeonPink;
 	playhead.setAlpha(150);
@@ -374,10 +495,11 @@ void VfdSpectrumWidget::drawAxes(QPainter& painter, const QRect& plot) const {
 	}
 
 	// X axis: frequency calibration, matching the design's labels.
-	if (!m_spectrogram.valid()) return;
+	const int rate = m_liveMode ? m_liveSampleRate : m_spectrogram.sampleRateHz;
+	if (rate <= 0) return;
 
 	const double lowHz = 30.0;
-	const double highHz = std::min(16000.0, m_spectrogram.sampleRateHz / 2.0 * 0.98);
+	const double highHz = std::min(16000.0, rate / 2.0 * 0.98);
 	const struct { double hz; const char* label; } marks[] = {
 		{31, "31"}, {62, "62"}, {125, "125"}, {250, "250"}, {500, "500"},
 		{1000, "1k"}, {2000, "2k"}, {4000, "4k"}, {8000, "8k"}, {16000, "16k"},

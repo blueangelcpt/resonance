@@ -59,6 +59,10 @@ int main(int argc, char** argv) {
 	const QCommandLineOption analyseOption(QStringLiteral("analyse"),
 		QStringLiteral("Analyse the selected track's spectrum on startup."));
 
+	const QCommandLineOption playOption(QStringLiteral("play"),
+		QStringLiteral("Start playing the selected track on startup."));
+
+	parser.addOption(playOption);
 	parser.addOption(selectOption);
 	parser.addOption(analyseOption);
 	parser.addOption(screenshotOption);
@@ -87,9 +91,10 @@ int main(int argc, char** argv) {
 	window.show();
 
 	if (parser.isSet(selectOption)) {
-		QTimer::singleShot(300, &window, [&window, &parser, selectOption, analyseOption]() {
+		QTimer::singleShot(300, &window, [&window, &parser, selectOption, analyseOption, playOption]() {
 			window.selectTrackMatching(parser.value(selectOption));
 			if (parser.isSet(analyseOption)) window.analyseSelectedTrack();
+			if (parser.isSet(playOption)) window.playSelectedTrack();
 		});
 	} else if (parser.isSet(analyseOption)) {
 		QTimer::singleShot(300, &window, [&window]() {

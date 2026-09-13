@@ -28,18 +28,29 @@ signed.
 Next step: provision an Authenticode certificate and an Apple Developer ID, then
 add them as protected CI secrets.
 
-### 3. Audio playback has not been heard
+### 3. Audio playback — verified working
 
-Playback is implemented: decode, a `QAudioSink` feed, transport, seek, volume,
-and the analyser following the real playhead. It compiles and the application
-runs.
+Resolved. Playback runs end to end against a real output device: decode,
+format negotiation, the `QAudioSink` feed, transport, seek and volume, with the
+analyser running a live FFT on the samples being played.
 
-**No audio has actually been played.** This machine's PipeWire exposes only a
-null sink, so Qt reports zero output devices and the transport is correctly
-disabled. Decode is exercised by the analyser path; the sink path is not.
+Verified on "Built-in Audio Analog Stereo", format negotiated at 44100 Hz,
+2 channels, float. Position advances in real time and the visualiser returns
+live sample blocks.
 
-Next step: run on a machine with a working output device and confirm audible,
-correctly-pitched playback, seek accuracy and clean pause/resume.
+Two defects were found and fixed in the process:
+
+- `PcmFeed` did not override `bytesAvailable()` or `isSequential()`. A pull-mode
+  `QAudioSink` asks the device how much data it can supply; `QIODevice`'s
+  default answer for an unbuffered device is zero, so the sink never pulled and
+  playback silently did nothing. **This was the reason playback did not work.**
+- The format fallback switched the sink's format when the device rejected the
+  track's own, but kept feeding the original data. Audio is now converted once
+  at load time to exactly the format the device agreed to, including sample
+  type, rate and channel mapping.
+
+Still outstanding: seek accuracy and pause/resume have not been measured
+rigorously, only exercised. Gapless playback is not implemented.
 
 ### 4. Qt Multimedia reintroduces an FFmpeg dependency
 

@@ -62,6 +62,15 @@ public:
 	/// Peak-hold decay. The design's meters hold a peak marker briefly.
 	void setPeakHoldEnabled(bool enabled) { m_peakHold = enabled; }
 
+	/// Feeds a block of mono samples straight from the audio output and renders
+	/// their spectrum. This is the live path: the analyser shows what is being
+	/// played, rather than replaying a precomputed analysis.
+	void pushLiveSamples(const std::vector<float>& samples, int sampleRateHz);
+
+	/// Switches between the live path and the precomputed spectrogram.
+	void setLiveMode(bool live);
+	bool isLiveMode() const { return m_liveMode; }
+
 	QSize minimumSizeHint() const override { return {320, 150}; }
 	QSize sizeHint() const override { return {820, 230}; }
 
@@ -102,6 +111,18 @@ private:
 	// in both axes, giving the dense VFD look.
 	int m_cellSize = 3;
 	int m_cellGap = 1;
+
+	// Live path.
+	bool m_liveMode = false;
+	int m_liveSampleRate = 0;
+	std::vector<float> m_window;      ///< Hann, sized to the analysis window.
+	std::vector<std::size_t> m_bandEdges;
+	int m_bandEdgeRate = 0;           ///< Rate the edges were built for.
+
+	/// Rebuilds the logarithmic band edges when the output rate changes.
+	void rebuildBands(int sampleRateHz);
+	/// Applies meter ballistics towards a freshly computed column.
+	void applyColumn(const std::vector<float>& column, float attack, float release);
 };
 
 } // namespace ml::desktop
