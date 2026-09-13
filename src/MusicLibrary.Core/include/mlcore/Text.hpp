@@ -32,6 +32,36 @@ StrippedTitle stripQualifiers(std::string_view utf8);
 /// two titles differing only by one of these must not be merged (FN-ALB-02).
 bool isEditionQualifier(std::string_view lowercaseQualifier);
 
+/// Compares two release titles, tolerating the suffixes catalogues add.
+///
+/// "Desire" and "Desire - Single" denote the same release; a raw edit-distance
+/// similarity scores that pair at 0.46 and would discard a correct match. The
+/// trailing marker is removed for the comparison and returned separately, so it
+/// stays available as edition evidence rather than being silently ignored.
+struct TitleComparison {
+	double similarity = 0.0;     ///< Similarity of the base titles.
+	std::string leftMarker;      ///< "Single", "EP", "Deluxe"... found on the left.
+	std::string rightMarker;
+	bool markersAgree = true;    ///< False when one side declares an edition the other does not.
+};
+TitleComparison compareTitles(std::string_view a, std::string_view b);
+
+/// Compares artist credits, tolerating collaboration and featuring forms.
+///
+/// "Calvin Harris" and "Calvin Harris & Sam Smith" are the same primary artist
+/// with a collaborator. Plain similarity scores that pair low; containment of
+/// the shorter credit's tokens in the longer one is the signal that matters.
+struct ArtistComparison {
+	double similarity = 0.0;       ///< Best of direct similarity and containment.
+	bool oneContainsTheOther = false;
+	std::vector<std::string> extraCredits;   ///< Names present on only one side.
+};
+ArtistComparison compareArtists(std::string_view a, std::string_view b);
+
+/// Splits an artist credit into individual names on "&", ",", "feat.", "with",
+/// "vs" and similar separators.
+std::vector<std::string> splitArtistCredit(std::string_view credit);
+
 /// Levenshtein distance over Unicode code points, capped for performance.
 std::size_t editDistance(std::string_view a, std::string_view b, std::size_t cap = 64);
 

@@ -266,6 +266,130 @@ bool isEditionQualifier(std::string_view lowercaseQualifier) {
 	return false;
 }
 
+namespace {
+
+/// Trailing markers catalogues append to a release title.
+const std::array<std::string_view, 8> kTrailingMarkers = {
+	"single", "ep", "deluxe edition", "deluxe", "remixes", "remix ep", "bonus track version", "explicit",
+};
+
+/// Separators that join several artists into one credit string.
+const std::array<std::string_view, 10> kArtistSeparators = {
+	" & ", " and ", ", ", " feat. ", " feat ", " featuring ", " ft. ", " ft ", " with ", " vs ",
+};
+
+} // namespace
+
+std::vector<std::string> splitArtistCredit(std::string_view credit) {
+	std::string working = std::string(credit);
+	std::vector<std::string> parts{working};
+
+	for (auto separator : kArtistSeparators) {
+		std::vector<std::string> next;
+		for (const auto& part : parts) {
+			const std::string lowerPart = toLowerAscii(part);
+			std::size_t start = 0;
+			while (true) {
+				const std::size_t position = lowerPart.find(separator, start);
+				if (position == std::string::npos) {
+					next.push_back(trim(part.substr(start)));
+					break;
+				}
+				next.push_back(trim(part.substr(start, position - start)));
+				start = position + separator.size();
+			}
+		}
+		parts.clear();
+		for (auto& p : next) {
+			if (!p.empty()) parts.push_back(std::move(p));
+		}
+	}
+	return parts;
+}
+
+TitleComparison compareTitles(std::string_view a, std::string_view b) {
+	TitleComparison result;
+
+	// Split a trailing " - Marker" form, which is how catalogues label singles
+	// and EPs, and also collect bracketed qualifiers.
+	const auto peel = [](std::string_view text, std::string& markerOut) {
+		std::string base = trim(text);
+		const std::size_t dash = base.rfind(" - ");
+		if (dash != std::string::npos) {
+			const std::string tail = toLowerAscii(trim(base.substr(dash + 3)));
+			for (auto marker : kTrailingMarkers) {
+				if (tail == marker) {
+					markerOut = trim(base.substr(dash + 3));
+					base = trim(base.substr(0, dash));
+					break;
+				}
+			}
+		}
+		const auto stripped = stripQualifiers(base);
+		for (const auto& q : stripped.qualifiers) {
+			const std::string lower = toLowerAscii(q);
+			for (auto marker : kTrailingMarkers) {
+				if (lower == marker && markerOut.empty()) markerOut = q;
+			}
+		}
+		return stripped.base.empty() ? base : stripped.base;
+	};
+
+	const std::string baseA = peel(a, result.leftMarker);
+	const std::string baseB = peel(b, result.rightMarker);
+
+	result.similarity = similarity(baseA, baseB);
+
+	// An edition marker on one side only is worth surfacing: it is the
+	// difference between a standard release and a deluxe one.
+	const std::string lowerLeft = toLowerAscii(result.leftMarker);
+	const std::string lowerRight = toLowerAscii(result.rightMarker);
+	const bool leftIsEdition = !lowerLeft.empty() && lowerLeft != "single" && lowerLeft != "ep";
+	const bool rightIsEdition = !lowerRight.empty() && lowerRight != "single" && lowerRight != "ep";
+	result.markersAgree = (leftIsEdition == rightIsEdition) && (lowerLeft == lowerRight || !leftIsEdition);
+
+	return result;
+}
+
+ArtistComparison compareArtists(std::string_view a, std::string_view b) {
+	ArtistComparison result;
+	result.similarity = similarity(a, b);
+
+	const auto partsA = splitArtistCredit(a);
+	const auto partsB = splitArtistCredit(b);
+	if (partsA.empty() || partsB.empty()) return result;
+
+	const auto matches = [](const std::vector<std::string>& haystack, const std::string& needle) {
+		for (const auto& candidate : haystack) {
+			if (similarity(candidate, needle) > 0.9) return true;
+		}
+		return false;
+	};
+
+	// Containment: every name on the shorter side appears on the longer side.
+	const auto& shorter = (partsA.size() <= partsB.size()) ? partsA : partsB;
+	const auto& longer = (partsA.size() <= partsB.size()) ? partsB : partsA;
+
+	std::size_t found = 0;
+	for (const auto& name : shorter) {
+		if (matches(longer, name)) ++found;
+	}
+	result.oneContainsTheOther = (found == shorter.size());
+
+	for (const auto& name : longer) {
+		if (!matches(shorter, name)) result.extraCredits.push_back(name);
+	}
+
+	if (result.oneContainsTheOther) {
+		// A shared primary artist with extra collaborators is a strong signal,
+		// but not identity: the extra credits are reported so a caller can decide.
+		const double containmentScore = 0.95 - 0.05 * static_cast<double>(result.extraCredits.size());
+		result.similarity = std::max(result.similarity, std::max(containmentScore, 0.8));
+	}
+
+	return result;
+}
+
 std::size_t editDistance(std::string_view a, std::string_view b, std::size_t cap) {
 	const auto ca = decodeUtf8(a);
 	const auto cb = decodeUtf8(b);
