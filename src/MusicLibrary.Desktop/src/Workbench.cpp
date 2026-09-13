@@ -563,7 +563,8 @@ void DeckPanel::setPlaybackAvailable(bool available, const QString& deviceName) 
 void DeckPanel::setPosition(double fraction) {
 	m_position = fraction;
 	if (!m_record) return;
-	const std::int64_t atMs = static_cast<std::int64_t>(fraction * m_record->audio.durationMs);
+	const std::int64_t atMs = static_cast<std::int64_t>(
+		fraction * static_cast<double>(m_record->audio.durationMs));
 	m_counterLabel->setText(qs(text::formatDuration(atMs)) + QStringLiteral(" / ")
 		+ qs(text::formatDuration(m_record->audio.durationMs)));
 }
@@ -576,7 +577,7 @@ void DeckPanel::updateMarquee() {
 		m_marqueeLabel->setText(m_marqueeText);
 		return;
 	}
-	m_marqueeOffset = (m_marqueeOffset + 1) % m_marqueeText.size();
+	m_marqueeOffset = (m_marqueeOffset + 1) % static_cast<int>(m_marqueeText.size());
 	const QString doubled = m_marqueeText + m_marqueeText;
 	m_marqueeLabel->setText(doubled.mid(m_marqueeOffset, kWidth));
 }

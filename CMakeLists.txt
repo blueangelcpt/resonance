@@ -98,8 +98,27 @@ find_package(PNG REQUIRED)
 find_package(CURL REQUIRED)
 find_package(Threads REQUIRED)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(TAGLIB REQUIRED IMPORTED_TARGET taglib)
+# TagLib discovery has to work three different ways.
+#
+# TagLib 2 ships a CMake config package, which is what vcpkg and Homebrew
+# install and the only thing available on Windows, where pkg-config generally is
+# not. Debian's libtag1-dev historically ships only a .pc file. Try the config
+# package first and fall back to pkg-config, then expose one target name so
+# nothing downstream has to know which route succeeded.
+find_package(taglib CONFIG QUIET)
+
+if(taglib_FOUND AND TARGET TagLib::tag)
+	add_library(Resonance::TagLib ALIAS TagLib::tag)
+	set(ML_TAGLIB_SOURCE "CMake config package")
+	if(DEFINED taglib_VERSION)
+		set(TAGLIB_VERSION "${taglib_VERSION}")
+	endif()
+else()
+	find_package(PkgConfig REQUIRED)
+	pkg_check_modules(TAGLIB REQUIRED IMPORTED_TARGET taglib)
+	add_library(Resonance::TagLib ALIAS PkgConfig::TAGLIB)
+	set(ML_TAGLIB_SOURCE "pkg-config")
+endif()
 
 if(ML_BUILD_DESKTOP)
 	find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Multimedia)
@@ -155,7 +174,7 @@ message(STATUS "  desktop (Qt 6) ...... ${ML_BUILD_DESKTOP}")
 message(STATUS "  cli ................. ${ML_BUILD_CLI}")
 message(STATUS "  tests ............... ${ML_BUILD_TESTS}")
 message(STATUS "  asan / ubsan ........ ${ML_ENABLE_ASAN} / ${ML_ENABLE_UBSAN}")
-message(STATUS "  TagLib .............. ${TAGLIB_VERSION}")
+message(STATUS "  TagLib .............. ${TAGLIB_VERSION} (via ${ML_TAGLIB_SOURCE})")
 message(STATUS "  SQLite .............. ${SQLite3_VERSION}")
 if(ML_BUILD_DESKTOP)
 	message(STATUS "  Qt .................. ${Qt6_VERSION}")

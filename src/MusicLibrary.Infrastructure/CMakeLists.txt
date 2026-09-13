@@ -32,7 +32,7 @@ target_link_libraries(MusicLibraryInfrastructure
 		MusicLibrary::Core
 		MusicLibrary::Version
 	PRIVATE
-		PkgConfig::TAGLIB
+		Resonance::TagLib
 		SQLite::SQLite3
 		JPEG::JPEG
 		PNG::PNG

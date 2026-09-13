@@ -31,10 +31,15 @@ float toNormalisedDb(float magnitude) {
 QColor levelColour(float normalised) {
 	const auto mix = [](const QColor& a, const QColor& b, float t) {
 		t = std::clamp(t, 0.0f, 1.0f);
-		return QColor(
-			static_cast<int>(a.red() + (b.red() - a.red()) * t),
-			static_cast<int>(a.green() + (b.green() - a.green()) * t),
-			static_cast<int>(a.blue() + (b.blue() - a.blue()) * t));
+		// Interpolate in float and round once, rather than letting int/float
+		// arithmetic mix implicitly on every channel.
+		const auto channel = [t](int from, int to) {
+			const float value = static_cast<float>(from)
+				+ (static_cast<float>(to) - static_cast<float>(from)) * t;
+			return static_cast<int>(std::lround(value));
+		};
+		return QColor(channel(a.red(), b.red()), channel(a.green(), b.green()),
+			channel(a.blue(), b.blue()));
 	};
 
 	if (normalised < 0.55f) return mix(theme::kNeonCyan, theme::kNeonPurple, normalised / 0.55f);
@@ -441,7 +446,7 @@ void VfdSpectrumWidget::drawMatrix(QPainter& painter, const QRect& plot) const {
 	for (int b = 0; b < bands; ++b) {
 		const float level = (static_cast<std::size_t>(b) < m_levels.size())
 			? m_levels[static_cast<std::size_t>(b)] : 0.0f;
-		const int litRows = static_cast<int>(std::lround(level * rows));
+		const int litRows = static_cast<int>(std::lround(level * static_cast<float>(rows)));
 
 		const int x = plot.left() + b * barWidth;
 
@@ -464,7 +469,8 @@ void VfdSpectrumWidget::drawMatrix(QPainter& painter, const QRect& plot) const {
 		if (m_peakHold && static_cast<std::size_t>(b) < m_peaks.size()) {
 			const float peak = m_peaks[static_cast<std::size_t>(b)];
 			if (peak > 0.02f) {
-				const int peakRow = std::min(rows - 1, static_cast<int>(std::lround(peak * rows)));
+				const int peakRow = std::min(rows - 1,
+					static_cast<int>(std::lround(peak * static_cast<float>(rows))));
 				const int y = plot.bottom() - (peakRow + 1) * step + m_cellGap;
 				painter.fillRect(x, y, dotWidth, m_cellSize, theme::kPrimary);
 			}
@@ -489,7 +495,8 @@ void VfdSpectrumWidget::drawAxes(QPainter& painter, const QRect& plot) const {
 	const int decibels[] = {0, -12, -24, -36, -48, -60, -72};
 	for (int db : decibels) {
 		const float normalised = (static_cast<float>(db) - kFloorDb) / (kCeilingDb - kFloorDb);
-		const int y = plot.bottom() - static_cast<int>(normalised * plot.height());
+		const int y = plot.bottom()
+			- static_cast<int>(normalised * static_cast<float>(plot.height()));
 		painter.drawText(QRect(2, y - 6, 32, 12), Qt::AlignRight | Qt::AlignVCenter,
 			QString::number(db));
 	}

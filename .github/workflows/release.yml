@@ -55,7 +55,7 @@ jobs:
       - uses: lukka/run-vcpkg@v11
         if: runner.os == 'Windows'
         with:
-          vcpkgGitCommitId: '5b1214315250939257ef5d62ecdcbca18cf4fb1c'
+          vcpkgGitCommitId: 'c76c06644034521fb761a39f8f52d8e87d1103d5'
 
       - name: Configure
         shell: bash
