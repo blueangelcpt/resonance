@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "MainWindow.hpp"
+#include "Theme.hpp"
 #include "mlcore/Text.hpp"
 
 #include <mlversion/Version.hpp>
@@ -26,6 +27,8 @@
 #include <QTableView>
 #include <QTextBrowser>
 #include <QTimer>
+#include <QApplication>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
 
 namespace fs = std::filesystem;
@@ -54,12 +57,21 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 	connect(m_runner, &TaskRunner::progressed, this, &MainWindow::onTaskProgress);
 	connect(m_runner, &TaskRunner::finished, this, &MainWindow::onTaskFinished);
 
+	// The workbench is the primary view; the remaining tabs are the same engine
+	// seen from a different angle.
 	m_tabs = new QTabWidget(this);
-	m_tabs->addTab(buildLibraryTab(), QStringLiteral("Library"));
-	m_tabs->addTab(buildTracksTab(), QStringLiteral("Tracks"));
-	m_tabs->addTab(buildAlbumsTab(), QStringLiteral("Albums && review"));
+	m_tabs->addTab(buildWorkbenchTab(), QStringLiteral("Workbench"));
+	m_tabs->addTab(buildAlbumsTab(), QStringLiteral("Artwork review"));
+	m_tabs->addTab(buildLibraryTab(), QStringLiteral("Library && commands"));
 	m_tabs->addTab(buildJobsTab(), QStringLiteral("Jobs && history"));
-	setCentralWidget(m_tabs);
+
+	auto* shell = new QWidget(this);
+	auto* shellLayout = new QVBoxLayout(shell);
+	shellLayout->setContentsMargins(0, 0, 0, 0);
+	shellLayout->setSpacing(0);
+	shellLayout->addWidget(buildHeaderStrip());
+	shellLayout->addWidget(m_tabs, 1);
+	setCentralWidget(shell);
 
 	// --- Menu ----------------------------------------------------------------
 	auto* fileMenu = menuBar()->addMenu(QStringLiteral("&File"));
@@ -119,6 +131,299 @@ void MainWindow::closeEvent(QCloseEvent* event) {
 	settings.setValue(QStringLiteral("dataDirectory"), m_dataEdit->text());
 
 	event->accept();
+}
+
+// ---------------------------------------------------------------------------
+// Header strip (the design's top diagnostic bar)
+// ---------------------------------------------------------------------------
+
+QWidget* MainWindow::buildHeaderStrip() {
+	auto* strip = new QFrame(this);
+	strip->setProperty("mlStrip", true);
+	strip->setFixedHeight(30);
+
+	auto* layout = new QHBoxLayout(strip);
+	layout->setContentsMargins(12, 0, 12, 0);
+	layout->setSpacing(14);
+
+	m_headerTitle = new QLabel(QStringLiteral("RESONANCE  v%1")
+		.arg(qs(std::string(version::kVersion))), strip);
+	m_headerTitle->setFont(theme::monoFont(9, QFont::Bold));
+	m_headerTitle->setStyleSheet(QStringLiteral("color:%1;").arg(theme::hex(theme::kNeonCyan)));
+	layout->addWidget(m_headerTitle);
+
+	auto* subtitle = new QLabel(QStringLiteral("— MP3 library catalogue and organiser"), strip);
+	subtitle->setFont(theme::monoFont(8));
+	subtitle->setProperty("mlMuted", true);
+	layout->addWidget(subtitle);
+
+	layout->addStretch(1);
+
+	// Source protection is the single most important fact about this
+	// application, so it is stated permanently rather than buried in a dialog.
+	m_headerMode = new QLabel(QStringLiteral("SOURCE READ-ONLY"), strip);
+	m_headerMode->setFont(theme::monoFont(8, QFont::Bold));
+	m_headerMode->setStyleSheet(QStringLiteral(
+		"color:%1; border:1px solid %1; border-radius:3px; padding:1px 8px;")
+		.arg(theme::hex(theme::kNeonCyan)));
+	layout->addWidget(m_headerMode);
+
+	m_headerSource = new QLabel(QStringLiteral("no library open"), strip);
+	m_headerSource->setFont(theme::monoFont(8));
+	m_headerSource->setProperty("mlSecondary", true);
+	layout->addWidget(m_headerSource);
+
+	m_headerCounts = new QLabel(strip);
+	m_headerCounts->setFont(theme::monoFont(8));
+	m_headerCounts->setTextFormat(Qt::RichText);
+	layout->addWidget(m_headerCounts);
+
+	return strip;
+}
+
+void MainWindow::refreshHeaderTelemetry() {
+	if (!m_library || !m_library->isOpen()) {
+		m_headerSource->setText(QStringLiteral("no library open"));
+		m_headerCounts->clear();
+		return;
+	}
+
+	const auto roots = m_library->guard().protectedRoots();
+	m_headerSource->setText(roots.empty()
+		? QStringLiteral("no source root")
+		: qs(roots.front().resolvedPath.string()));
+
+	auto coverage = m_library->coverage();
+	if (!coverage) return;
+	const CoverageReport& c = coverage.value();
+
+	const auto stat = [](const QString& label, qint64 value, const QColor& colour) {
+		return QStringLiteral("<span style='color:%1'>%2</span> "
+			"<b style='color:%3'>%4</b>")
+			.arg(theme::hex(theme::kTextMuted)).arg(label)
+			.arg(theme::hex(colour)).arg(value);
+	};
+
+	m_headerCounts->setText(QStringList{
+		stat(QStringLiteral("FILES"), c.totalFiles, theme::kNeonCyan),
+		stat(QStringLiteral("ALBUMS"), c.albumCount, theme::kNeonCyan),
+		stat(QStringLiteral("REVIEW"), c.albumsNeedingReview,
+			c.albumsNeedingReview > 0 ? theme::kNeonPink : theme::kTextSecondary),
+		stat(QStringLiteral("UNREADABLE"), c.unreadable,
+			c.unreadable > 0 ? theme::kOverloadRed : theme::kTextSecondary),
+	}.join(QStringLiteral(" &nbsp;·&nbsp; ")));
+}
+
+// ---------------------------------------------------------------------------
+// Workbench tab: the design's three-column layout
+// ---------------------------------------------------------------------------
+
+QWidget* MainWindow::buildWorkbenchTab() {
+	auto* page = new QWidget(this);
+	auto* layout = new QHBoxLayout(page);
+	layout->setContentsMargins(6, 6, 6, 6);
+	layout->setSpacing(6);
+
+	auto* columns = new QSplitter(Qt::Horizontal, page);
+
+	// --- Left: library explorer ------------------------------------------
+	auto* explorerPanel = new Panel(QStringLiteral("Library Explorer"),
+		QStringLiteral("cyan"), columns);
+	m_explorer = new LibraryExplorer(explorerPanel->body());
+	{
+		auto* inner = new QVBoxLayout(explorerPanel->body());
+		inner->setContentsMargins(0, 0, 0, 0);
+		inner->addWidget(m_explorer);
+	}
+	connect(m_explorer, &LibraryExplorer::filterRequested, this, &MainWindow::onExplorerFilter);
+	connect(m_explorer, &LibraryExplorer::albumRequested, this, [this](AlbumId album) {
+		m_reviewWidget->showAlbum(album);
+	});
+	columns->addWidget(explorerPanel);
+
+	// --- Centre: deck, spectrum, track list -------------------------------
+	auto* centre = new QSplitter(Qt::Vertical, columns);
+
+	auto* deckPanel = new Panel(QStringLiteral("Selected Track"), QStringLiteral("cyan"), centre);
+	deckPanel->setSubtitle(QStringLiteral("measured from the stream, not from tags"));
+	m_deck = new DeckPanel(deckPanel->body());
+	{
+		auto* inner = new QVBoxLayout(deckPanel->body());
+		inner->setContentsMargins(0, 0, 0, 0);
+		inner->addWidget(m_deck);
+	}
+	deckPanel->setMaximumHeight(140);
+	centre->addWidget(deckPanel);
+
+	auto* spectrumPanel = new Panel(QStringLiteral("VFD Spectrum Analyser"),
+		QStringLiteral("purple"), centre);
+	spectrumPanel->setSubtitle(QStringLiteral("spectrum of the decoded file"));
+	{
+		auto* inner = new QVBoxLayout(spectrumPanel->body());
+		inner->setContentsMargins(4, 4, 4, 2);
+		inner->setSpacing(3);
+		m_spectrum = new VfdSpectrumWidget(spectrumPanel->body());
+		inner->addWidget(m_spectrum, 1);
+
+		m_spectrumTelemetry = new QLabel(spectrumPanel->body());
+		m_spectrumTelemetry->setFont(theme::monoFont(7));
+		m_spectrumTelemetry->setProperty("mlMuted", true);
+		m_spectrumTelemetry->setText(QStringLiteral(
+			"FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
+		inner->addWidget(m_spectrumTelemetry);
+	}
+	centre->addWidget(spectrumPanel);
+
+	auto* listPanel = new Panel(QStringLiteral("Track Matrix"), QStringLiteral("cyan"), centre);
+	{
+		auto* inner = new QVBoxLayout(listPanel->body());
+		inner->setContentsMargins(4, 4, 4, 4);
+		inner->setSpacing(4);
+
+		auto* filterRow = new QHBoxLayout();
+		m_searchEdit = new QLineEdit(listPanel->body());
+		m_searchEdit->setPlaceholderText(QStringLiteral("Filter title, artist, album or path…"));
+		m_searchEdit->setClearButtonEnabled(true);
+		m_searchEdit->setFont(theme::monoFont(9));
+		filterRow->addWidget(m_searchEdit, 1);
+
+		m_filterNoArtwork = new QCheckBox(QStringLiteral("No artwork"), listPanel->body());
+		m_filterNoLyrics = new QCheckBox(QStringLiteral("No lyrics"), listPanel->body());
+		m_filterNoBpm = new QCheckBox(QStringLiteral("No BPM"), listPanel->body());
+		m_filterGain = new QCheckBox(QStringLiteral("Gain"), listPanel->body());
+		m_filterPrivacy = new QCheckBox(QStringLiteral("Privacy"), listPanel->body());
+		for (QCheckBox* box : {m_filterNoArtwork, m_filterNoLyrics, m_filterNoBpm, m_filterGain,
+				m_filterPrivacy}) {
+			box->setFont(theme::monoFont(8));
+			filterRow->addWidget(box);
+			connect(box, &QCheckBox::toggled, this, &MainWindow::onFilterChanged);
+		}
+		inner->addLayout(filterRow);
+
+		m_trackModel = new TrackTableModel(this);
+		m_trackTable = new QTableView(listPanel->body());
+		m_trackTable->setModel(m_trackModel);
+		m_trackTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+		m_trackTable->setSelectionMode(QAbstractItemView::SingleSelection);
+		m_trackTable->setAlternatingRowColors(true);
+		m_trackTable->setShowGrid(false);
+		m_trackTable->verticalHeader()->setVisible(false);
+		m_trackTable->verticalHeader()->setDefaultSectionSize(20);
+		m_trackTable->horizontalHeader()->setStretchLastSection(true);
+		m_trackTable->setFont(theme::monoFont(8));
+		connect(m_trackTable, &QTableView::clicked, this, &MainWindow::onTrackActivated);
+		inner->addWidget(m_trackTable, 1);
+
+		m_trackCountLabel = new QLabel(QStringLiteral("No library open."), listPanel->body());
+		m_trackCountLabel->setFont(theme::monoFont(8));
+		m_trackCountLabel->setProperty("mlMuted", true);
+		inner->addWidget(m_trackCountLabel);
+	}
+	centre->addWidget(listPanel);
+
+	centre->setStretchFactor(0, 0);
+	centre->setStretchFactor(1, 2);
+	centre->setStretchFactor(2, 3);
+	columns->addWidget(centre);
+
+	// --- Right: inspector --------------------------------------------------
+	auto* inspectorPanel = new Panel(QStringLiteral("Inspector"), QStringLiteral("pink"), columns);
+	m_inspector = new InspectorPanel(inspectorPanel->body());
+	{
+		auto* inner = new QVBoxLayout(inspectorPanel->body());
+		inner->setContentsMargins(0, 0, 0, 0);
+		inner->addWidget(m_inspector);
+	}
+	columns->addWidget(inspectorPanel);
+
+	columns->setStretchFactor(0, 0);
+	columns->setStretchFactor(1, 1);
+	columns->setStretchFactor(2, 0);
+	columns->setSizes({280, 900, 340});
+
+	layout->addWidget(columns, 1);
+
+	// Debounced search.
+	auto* searchTimer = new QTimer(this);
+	searchTimer->setSingleShot(true);
+	searchTimer->setInterval(250);
+	connect(searchTimer, &QTimer::timeout, this, &MainWindow::onFilterChanged);
+	connect(m_searchEdit, &QLineEdit::textChanged, this, [searchTimer]() { searchTimer->start(); });
+
+	// Spectrum plumbing.
+	connect(m_deck, &DeckPanel::sweepToggled, this, [this](bool sweeping) {
+		m_spectrum->setSweeping(sweeping);
+	});
+	connect(m_deck, &DeckPanel::analyseRequested, this, &MainWindow::onAnalyseSpectrum);
+	connect(m_spectrum, &VfdSpectrumWidget::positionChanged, this, [this](double fraction) {
+		m_deck->setPosition(fraction);
+	});
+
+	return page;
+}
+
+void MainWindow::onExplorerFilter(const TrackFilter& filter) {
+	// Reflect the chosen node in the filter chips so the two never disagree.
+	const QSignalBlocker b1(m_filterNoArtwork);
+	const QSignalBlocker b2(m_filterNoLyrics);
+	const QSignalBlocker b3(m_filterNoBpm);
+	const QSignalBlocker b4(m_filterGain);
+	const QSignalBlocker b5(m_filterPrivacy);
+	const QSignalBlocker b6(m_searchEdit);
+
+	m_filterNoArtwork->setChecked(filter.missingArtwork.value_or(false));
+	m_filterNoLyrics->setChecked(filter.missingLyrics.value_or(false));
+	m_filterNoBpm->setChecked(filter.missingBpm.value_or(false));
+	m_filterGain->setChecked(filter.hasGainFields.value_or(false));
+	m_filterPrivacy->setChecked(filter.hasPrivacyFindings.value_or(false));
+	m_searchEdit->setText(qs(filter.searchText));
+
+	m_trackModel->setFilter(filter);
+	m_trackCountLabel->setText(QStringLiteral("%1 tracks match.").arg(m_trackModel->rowCount()));
+	m_tabs->setCurrentIndex(0);
+}
+
+void MainWindow::onAnalyseSpectrum(FileId file) {
+	if (!m_library || !m_library->isOpen()) return;
+
+	auto record = m_library->catalogue().loadFile(file);
+	if (!record || !record.value()) return;
+
+	// Locate the source. Reading is always permitted; writing never is.
+	std::error_code ec;
+	fs::path source;
+	for (const auto& root : m_library->guard().protectedRoots()) {
+		const fs::path candidate = root.resolvedPath / record.value()->relativePath;
+		if (fs::exists(candidate, ec) && !ec) { source = candidate; break; }
+	}
+	if (source.empty()) {
+		m_spectrum->clear(QStringLiteral("The source file is not currently reachable."));
+		return;
+	}
+
+	m_spectrum->clear(QStringLiteral("Decoding…"));
+	QApplication::setOverrideCursor(Qt::BusyCursor);
+
+	// Analysis is bounded: a long mix does not need to be decoded in full to
+	// show its spectral character.
+	DecodeOptions options;
+	options.maxDurationMs = 6 * 60 * 1000;
+	auto audio = Mp3Decoder::decode(source, options);
+
+	QApplication::restoreOverrideCursor();
+
+	if (!audio) {
+		m_spectrum->clear(QStringLiteral("Could not decode: %1")
+			.arg(qs(audio.error().message)));
+		return;
+	}
+
+	m_spectrum->setSpectrogram(buildSpectrogram(audio.value(), 96));
+	m_spectrumTelemetry->setText(QStringLiteral(
+		"FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · decoded %1 at %2 Hz mono · minimp3")
+		.arg(qs(text::formatDuration(audio.value().durationMs)))
+		.arg(audio.value().sampleRateHz));
+	appendLog(QStringLiteral("Analysed spectrum: %1").arg(qs(record.value()->relativePath)));
 }
 
 // ---------------------------------------------------------------------------
@@ -257,76 +562,6 @@ QWidget* MainWindow::buildLibraryTab() {
 	connect(refreshButton, &QPushButton::clicked, this, &MainWindow::onRefreshCoverage);
 	coverageLayout->addWidget(refreshButton, 0, Qt::AlignLeft);
 	layout->addWidget(coverageGroup, 1);
-
-	return page;
-}
-
-// ---------------------------------------------------------------------------
-// Tracks tab
-// ---------------------------------------------------------------------------
-
-QWidget* MainWindow::buildTracksTab() {
-	auto* page = new QWidget(this);
-	auto* layout = new QVBoxLayout(page);
-
-	auto* filterRow = new QHBoxLayout();
-	filterRow->addWidget(new QLabel(QStringLiteral("Search"), page));
-	m_searchEdit = new QLineEdit(page);
-	m_searchEdit->setPlaceholderText(QStringLiteral("title, artist, album or path"));
-	m_searchEdit->setClearButtonEnabled(true);
-	filterRow->addWidget(m_searchEdit, 1);
-
-	m_filterNoArtwork = new QCheckBox(QStringLiteral("No artwork"), page);
-	m_filterNoLyrics = new QCheckBox(QStringLiteral("No lyrics"), page);
-	m_filterNoBpm = new QCheckBox(QStringLiteral("No BPM"), page);
-	m_filterGain = new QCheckBox(QStringLiteral("Has gain fields"), page);
-	m_filterPrivacy = new QCheckBox(QStringLiteral("Privacy findings"), page);
-
-	for (QCheckBox* box : {m_filterNoArtwork, m_filterNoLyrics, m_filterNoBpm, m_filterGain,
-			m_filterPrivacy}) {
-		filterRow->addWidget(box);
-		connect(box, &QCheckBox::toggled, this, &MainWindow::onFilterChanged);
-	}
-	layout->addLayout(filterRow);
-
-	connect(m_searchEdit, &QLineEdit::textChanged, this, [this]() {
-		// Debounce so typing does not re-query on every keystroke.
-		static QTimer* timer = nullptr;
-		if (!timer) {
-			timer = new QTimer(this);
-			timer->setSingleShot(true);
-			timer->setInterval(250);
-			connect(timer, &QTimer::timeout, this, &MainWindow::onFilterChanged);
-		}
-		timer->start();
-	});
-
-	auto* splitter = new QSplitter(Qt::Vertical, page);
-
-	m_trackModel = new TrackTableModel(this);
-	m_trackTable = new QTableView(splitter);
-	m_trackTable->setModel(m_trackModel);
-	m_trackTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-	m_trackTable->setSelectionMode(QAbstractItemView::SingleSelection);
-	m_trackTable->setAlternatingRowColors(true);
-	m_trackTable->setSortingEnabled(false);
-	m_trackTable->verticalHeader()->setVisible(false);
-	m_trackTable->verticalHeader()->setDefaultSectionSize(22);
-	m_trackTable->horizontalHeader()->setStretchLastSection(true);
-	connect(m_trackTable, &QTableView::clicked, this, &MainWindow::onTrackActivated);
-	splitter->addWidget(m_trackTable);
-
-	m_planPreview = new QTextBrowser(splitter);
-	m_planPreview->setHtml(QStringLiteral(
-		"<i>Select a track to see the exact changes that would be made to its copy.</i>"));
-	splitter->addWidget(m_planPreview);
-	splitter->setStretchFactor(0, 3);
-	splitter->setStretchFactor(1, 2);
-
-	layout->addWidget(splitter, 1);
-
-	m_trackCountLabel = new QLabel(QStringLiteral("No library open."), page);
-	layout->addWidget(m_trackCountLabel);
 
 	return page;
 }
@@ -478,10 +713,56 @@ void MainWindow::onOpenLibrary() {
 	m_trackModel->setLibrary(m_library.get());
 	m_albumModel->setLibrary(m_library.get());
 	m_reviewWidget->setLibrary(m_library.get());
+	m_explorer->setLibrary(m_library.get());
+	m_deck->setLibrary(m_library.get());
+	m_inspector->setLibrary(m_library.get());
 
 	appendLog(QStringLiteral("Library opened. Source: %1").arg(m_sourceEdit->text()));
 	statusBar()->showMessage(QStringLiteral("Library open. Run Scan to build the catalogue."), 8000);
 	refreshAll();
+}
+
+void MainWindow::openLibraryAt(const QString& source, const QString& output, const QString& data,
+	bool offline) {
+	if (!source.isEmpty()) m_sourceEdit->setText(source);
+	if (!output.isEmpty()) m_outputEdit->setText(output);
+	if (!data.isEmpty()) m_dataEdit->setText(data);
+	m_offlineCheck->setChecked(offline);
+	onOpenLibrary();
+}
+
+void MainWindow::selectFirstTrack() {
+	if (!m_trackTable || m_trackModel->rowCount() == 0) return;
+	const QModelIndex first = m_trackModel->index(0, 0);
+	m_trackTable->setCurrentIndex(first);
+	onTrackActivated(first);
+}
+
+bool MainWindow::hasSelection() const {
+	return m_trackTable && m_trackTable->currentIndex().isValid();
+}
+
+void MainWindow::selectTrackMatching(const QString& text) {
+	if (!m_searchEdit) return;
+	// Block the edit's signal so the debounce timer does not fire a second,
+	// delayed filter pass: that reset the model, dropped the selection and wiped
+	// an analysis that had already completed.
+	{
+		const QSignalBlocker blocker(m_searchEdit);
+		m_searchEdit->setText(text);
+	}
+	onFilterChanged();
+	selectFirstTrack();
+}
+
+void MainWindow::analyseSelectedTrack() {
+	if (!m_trackTable) return;
+	const QModelIndex current = m_trackTable->currentIndex();
+	if (!current.isValid()) return;
+	const auto record = m_trackModel->recordAt(current.row());
+	if (!record) return;
+	onAnalyseSpectrum(record->id);
+	if (m_spectrum) m_spectrum->setPosition(0.32);
 }
 
 bool MainWindow::requireOpenLibrary() {
@@ -803,12 +1084,17 @@ void MainWindow::onTrackActivated(const QModelIndex& index) {
 	const auto record = m_trackModel->recordAt(index.row());
 	if (!record) return;
 
-	auto plan = m_library->previewFile(record->id);
-	if (!plan) {
-		m_planPreview->setHtml(QStringLiteral("<i>Could not preview: %1</i>")
-			.arg(qs(plan.error().describe()).toHtmlEscaped()));
-		return;
+	// One selection drives the whole workbench.
+	if (m_deck) m_deck->showFile(*record);
+	if (m_inspector) m_inspector->showFile(record->id);
+	if (m_spectrum) {
+		m_spectrum->setSweeping(false);
+		m_spectrum->clear(QStringLiteral("Press Analyse to decode this track's spectrum."));
 	}
+
+	auto plan = m_library->previewFile(record->id);
+	if (!plan) return;
+	if (!m_planPreview) return;
 
 	const FilePlan& p = plan.value();
 	QString html;
@@ -961,6 +1247,8 @@ void MainWindow::onRefreshCoverage() {
 void MainWindow::refreshAll() {
 	m_trackModel->refresh();
 	m_albumModel->refresh();
+	if (m_explorer) m_explorer->refresh();
+	refreshHeaderTelemetry();
 	onRefreshCoverage();
 	m_trackCountLabel->setText(QStringLiteral("%1 tracks match.").arg(m_trackModel->rowCount()));
 }

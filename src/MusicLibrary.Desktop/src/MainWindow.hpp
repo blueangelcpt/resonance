@@ -8,6 +8,9 @@
 
 #include "AlbumReviewWidget.hpp"
 #include "TaskRunner.hpp"
+#include "Theme.hpp"
+#include "VfdSpectrumWidget.hpp"
+#include "Workbench.hpp"
 #include "TrackTableModel.hpp"
 #include "mlapp/Library.hpp"
 
@@ -34,6 +37,24 @@ class MainWindow : public QMainWindow {
 public:
 	explicit MainWindow(QWidget* parent = nullptr);
 	~MainWindow() override;
+
+	/// Opens a library directly, bypassing the saved settings. Used by the
+	/// command line and by the screenshot smoke test.
+	void openLibraryAt(const QString& source, const QString& output, const QString& data,
+		bool offline);
+
+	/// Selects the first track that matches the current filter, so a freshly
+	/// opened window shows real content rather than empty panels.
+	void selectFirstTrack();
+
+	/// Filters the track table to `text` and selects the first match.
+	void selectTrackMatching(const QString& text);
+
+	/// Analyses the currently selected track's spectrum.
+	void analyseSelectedTrack();
+
+	/// True when a track row is currently selected.
+	bool hasSelection() const;
 
 protected:
 	void closeEvent(QCloseEvent* event) override;
@@ -64,14 +85,18 @@ private slots:
 
 	void onFilterChanged();
 	void onTrackActivated(const QModelIndex& index);
+	void onExplorerFilter(const TrackFilter& filter);
+	void onAnalyseSpectrum(FileId file);
 	void onAlbumActivated(const QModelIndex& index);
 	void onRefreshCoverage();
 
 private:
+	QWidget* buildWorkbenchTab();
 	QWidget* buildLibraryTab();
-	QWidget* buildTracksTab();
 	QWidget* buildAlbumsTab();
 	QWidget* buildJobsTab();
+	QWidget* buildHeaderStrip();
+	void refreshHeaderTelemetry();
 
 	void setBusy(bool busy);
 	void refreshAll();
@@ -92,6 +117,19 @@ private:
 	QPushButton* m_openButton = nullptr;
 	QTextBrowser* m_coverageBrowser = nullptr;
 	QLabel* m_safetyLabel = nullptr;
+
+	// Header strip
+	QLabel* m_headerTitle = nullptr;
+	QLabel* m_headerSource = nullptr;
+	QLabel* m_headerMode = nullptr;
+	QLabel* m_headerCounts = nullptr;
+
+	// Workbench
+	LibraryExplorer* m_explorer = nullptr;
+	DeckPanel* m_deck = nullptr;
+	VfdSpectrumWidget* m_spectrum = nullptr;
+	InspectorPanel* m_inspector = nullptr;
+	QLabel* m_spectrumTelemetry = nullptr;
 
 	// Tracks tab
 	TrackTableModel* m_trackModel = nullptr;

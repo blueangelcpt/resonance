@@ -17,6 +17,12 @@ add_executable(resonance-desktop WIN32 MACOSX_BUNDLE
 	src/TrackTableModel.hpp
 	src/AlbumReviewWidget.cpp
 	src/AlbumReviewWidget.hpp
+	src/Theme.cpp
+	src/Theme.hpp
+	src/VfdSpectrumWidget.cpp
+	src/VfdSpectrumWidget.hpp
+	src/Workbench.cpp
+	src/Workbench.hpp
 )
 
 target_link_libraries(resonance-desktop

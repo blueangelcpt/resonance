@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700;800&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "outline": "#849495",
+          "outline-variant": "#232942",
+          "surface-container-lowest": "#0a0c13",
+          "on-secondary": "#ffffff",
+          "splitter-active": "#353d59",
+          "on-primary-fixed": "#002022",
+          "on-secondary-fixed-variant": "#7300a2",
+          "on-tertiary-fixed": "#3f001b",
+          "meter-safe-cyan": "#00f0ff",
+          "tertiary": "#ff2a85",
+          "on-background": "#e3e1e9",
+          "surface-dim": "#0a0c13",
+          "inverse-surface": "#e3e1e9",
+          "secondary-fixed-dim": "#b026ff",
+          "on-primary-fixed-variant": "#004f54",
+          "inverse-on-surface": "#2f3036",
+          "on-secondary-fixed": "#310048",
+          "tertiary-fixed": "#ffd9e1",
+          "surface-container": "#141826",
+          "neon-pink-glow": "rgba(255, 42, 133, 0.45)",
+          "on-error-container": "#ffdad6",
+          "on-tertiary": "#ffffff",
+          "on-primary": "#001e22",
+          "on-surface": "#e3e1e9",
+          "on-error": "#690005",
+          "primary-fixed-dim": "#00dbe9",
+          "error": "#ff1744",
+          "meter-peak-pink": "#ff2a85",
+          "surface-container-low": "#10131d",
+          "secondary-fixed": "#e9b3ff",
+          "splitter-muted": "#1d2338",
+          "surface-variant": "#1c2133",
+          "tertiary-container": "#ff007f",
+          "error-container": "#93000a",
+          "neon-purple-glow": "rgba(176, 38, 255, 0.4)",
+          "surface-deep-void": "#06070a",
+          "surface-tint": "#00f0ff",
+          "neon-cyan-glow": "rgba(0, 240, 255, 0.4)",
+          "background": "#0a0c13",
+          "on-tertiary-container": "#ffffff",
+          "surface-overlay": "#262b3e",
+          "text-secondary": "#8d96b0",
+          "peak-overload-red": "#ff1744",
+          "surface-bright": "#222940",
+          "primary": "#dbfcff",
+          "secondary-container": "#b026ff",
+          "surface-panel": "#10131d",
+          "surface-rack-dark": "#0a0c13",
+          "surface-container-high": "#191f32",
+          "surface-panel-raised": "#191f32",
+          "meter-mid-purple": "#b026ff",
+          "surface": "#0a0c13",
+          "secondary": "#b026ff",
+          "primary-fixed": "#7df4ff",
+          "on-surface-variant": "#9ba9c7",
+          "on-primary-container": "#001a1c",
+          "primary-container": "#00f0ff",
+          "inverse-primary": "#006970",
+          "surface-container-highest": "#232942",
+          "on-secondary-container": "#f9e0ff",
+          "on-tertiary-fixed-variant": "#8f0045",
+          "text-muted": "#4b536a",
+          "tertiary-fixed-dim": "#ffb1c5",
+          "text-primary": "#f0f4fc"
+        },
+        borderRadius: {
+          DEFAULT: "0.25rem",
+          lg: "0.5rem",
+          xl: "0.75rem",
+          full: "9999px"
+        },
+        spacing: {
+          gutter: "0px",
+          "space-xl": "16px",
+          "space-sm": "4px",
+          "space-md": "8px",
+          margin: "0px",
+          "space-xs": "2px",
+          "space-lg": "12px"
+        },
+        fontFamily: {
+          "body-sm": ["Inter"],
+          "body-md": ["Inter"],
+          "body-lg": ["Inter"],
+          "headline-sm": ["Space Grotesk", "Inter"],
+          "label-telemetry-lg": ["JetBrains Mono"],
+          "headline-lg": ["Space Grotesk", "Inter"],
+          "label-telemetry-md": ["JetBrains Mono"],
+          "headline-md": ["Space Grotesk", "Inter"],
+          "label-badge": ["JetBrains Mono"],
+          "label-telemetry-sm": ["JetBrains Mono"]
+        },
+        fontSize: {
+          "body-sm": ["11px", { lineHeight: "15px", letterSpacing: "0.01em", fontWeight: "400" }],
+          "body-md": ["12px", { lineHeight: "16px", letterSpacing: "0em", fontWeight: "400" }],
+          "body-lg": ["13px", { lineHeight: "18px", letterSpacing: "-0.005em", fontWeight: "400" }],
+          "headline-sm": ["13px", { lineHeight: "18px", letterSpacing: "0.02em", fontWeight: "600" }],
+          "label-telemetry-lg": ["22px", { lineHeight: "24px", letterSpacing: "-0.03em", fontWeight: "700" }],
+          "headline-lg": ["22px", { lineHeight: "28px", letterSpacing: "-0.02em", fontWeight: "700" }],
+          "label-telemetry-md": ["13px", { lineHeight: "16px", letterSpacing: "-0.01em", fontWeight: "500" }],
+          "headline-md": ["16px", { lineHeight: "20px", letterSpacing: "-0.01em", fontWeight: "600" }],
+          "label-badge": ["9px", { lineHeight: "11px", letterSpacing: "0.08em", fontWeight: "700" }],
+          "label-telemetry-sm": ["11px", { lineHeight: "14px", letterSpacing: "0em", fontWeight: "500" }]
+        }
+      }
+    }
+  }
+</script>
+<style>
+  @layer base {
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    body {
+      overscroll-behavior: none;
+      background-color: #0a0c13;
+      color: #e3e1e9;
+    }
+    main > :first-child { margin-top: 0 !important; }
+    main > :last-child { margin-bottom: 0 !important; }
+  }
+  ::-webkit-scrollbar { display: none; }
+  .neon-glow-cyan {
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.45);
+  }
+  .neon-glow-pink {
+    box-shadow: 0 0 12px rgba(255, 42, 133, 0.55);
+  }
+  .neon-glow-purple {
+    box-shadow: 0 0 12px rgba(176, 38, 255, 0.5);
+  }
+</style>
+</head>
+<body class="bg-surface text-on-surface font-body-md text-body-md select-none m-margin p-margin overflow-x-hidden min-h-screen">
+<!-- HEADER NAVIGATION BAR -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-[#0a0c13] border-b border-[#232942]">
+<!-- Top Diagnostic Strip -->
+<div class="h-space-lg flex items-center justify-between px-space-md bg-[#08090f] border-b border-[#1b2137]">
+<div class="flex items-center gap-space-md min-w-0 overflow-hidden">
+<div class="flex items-center justify-center w-space-lg h-space-lg bg-primary-container text-on-primary-container rounded shadow-[0_0_10px_rgba(0,240,255,0.6)]">
+<span class="material-symbols-outlined text-[14px]">graphic_eq</span>
+</div>
+<div class="flex items-center gap-space-sm truncate font-mono">
+<span class="font-headline-sm text-headline-sm text-primary-container tracking-tight font-bold drop-shadow-[0_0_6px_rgba(0,240,255,0.4)]">Resonance v4.2 [x64]</span>
+<span class="font-label-telemetry-sm text-label-telemetry-sm text-[#8d96b0]">- Cyberpunk Telemetry Engine</span>
+<span class="font-label-telemetry-sm text-label-telemetry-sm text-[#b026ff] px-space-xs py-0 bg-[#141826] rounded border border-[#b026ff]/40 drop-shadow-[0_0_8px_rgba(176,38,255,0.3)]">[WASAPI Exclusive: Topping E50 DAC - 32bit/384kHz]</span>
+</div>
+</div>
+<div class="hidden md:flex items-center justify-center px-space-lg">
+<div class="flex items-center gap-space-xs px-space-md py-space-xs rounded bg-[#10131d] border border-primary-container/50 shadow-[0_0_10px_rgba(0,240,255,0.25)]">
+<div class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse shadow-[0_0_6px_#00f0ff]"></div>
+<span class="font-label-badge text-label-badge text-primary-container uppercase font-bold tracking-widest">DIRECT DSD / BIT-PERFECT</span>
+</div>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="w-space-xl h-space-lg flex items-center justify-center text-[#8d96b0] hover:text-primary-container hover:bg-[#141826] transition-colors" title="Sync Telemetry">
+<span class="material-symbols-outlined text-[14px]">sync_alt</span>
+</button>
+<button class="w-space-xl h-space-lg flex items-center justify-center text-[#8d96b0] hover:text-on-surface hover:bg-[#141826] transition-colors" title="Minimize">
+<span class="material-symbols-outlined text-[14px]">remove</span>
+</button>
+<button class="w-space-xl h-space-lg flex items-center justify-center text-[#8d96b0] hover:text-on-surface hover:bg-[#141826] transition-colors" title="Maximize/Restore">
+<span class="material-symbols-outlined text-[14px]">crop_square</span>
+</button>
+<button class="w-space-xl h-space-lg flex items-center justify-center text-[#8d96b0] hover:text-white hover:bg-meter-peak-pink transition-colors" title="Close">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+<div class="w-space-lg h-space-lg rounded-full bg-gradient-to-r from-primary-container to-[#b026ff] flex items-center justify-center ml-space-xs shadow-[0_0_8px_rgba(176,38,255,0.5)]">
+<span class="material-symbols-outlined text-[#0a0c13] font-bold text-[13px]">person</span>
+</div>
+</div>
+</div>
+<!-- Primary Module Bar -->
+<div class="h-space-xl flex items-center justify-between px-space-md bg-[#10131d] border-b border-[#232942]">
+<nav class="flex items-center gap-space-xs font-headline-sm">
+<a aria-current="page" class="px-space-md py-space-xs rounded-sm transition-colors font-body-sm font-semibold bg-primary-container text-on-primary-container shadow-[0_0_10px_rgba(0,240,255,0.4)]" data-path="main-workbench" href="#">Workbench</a>
+<a class="px-space-md py-space-xs rounded-sm text-[#8d96b0] hover:text-primary-container hover:bg-[#191f32] transition-colors font-body-sm text-body-sm" data-path="dsp-audio-matrix" href="#">DSP Engine</a>
+<a class="px-space-md py-space-xs rounded-sm text-[#8d96b0] hover:text-primary-container hover:bg-[#191f32] transition-colors font-body-sm text-body-sm" data-path="library-archive" href="#">Library Archive</a>
+<a class="px-space-md py-space-xs rounded-sm text-[#8d96b0] hover:text-primary-container hover:bg-[#191f32] transition-colors font-body-sm text-body-sm" data-path="device-telemetry" href="#">Hardware Telemetry</a>
+<a class="px-space-md py-space-xs rounded-sm text-[#8d96b0] hover:text-primary-container hover:bg-[#191f32] transition-colors font-body-sm text-body-sm" data-path="tag-metadata-editor" href="#">Meta Inspector</a>
+</nav>
+<div class="flex items-center gap-space-md font-mono">
+<div class="flex items-center gap-space-xs font-label-badge text-label-badge bg-[#0a0c13] px-space-md py-space-xs rounded border border-[#232942]">
+<span class="text-meter-peak-pink font-bold drop-shadow-[0_0_6px_rgba(255,42,133,0.5)]">DSP [ACTIVE]</span>
+<span class="text-[#232942]">|</span>
+<button class="text-[#b026ff] hover:text-[#ff2a85] transition-colors font-bold uppercase tracking-wider">MUTE</button>
+</div>
+<div class="flex items-center gap-space-xs bg-[#0a0c13] px-space-md py-space-xs rounded border border-[#232942]">
+<span class="material-symbols-outlined text-[14px] text-primary-container">volume_up</span>
+<div class="w-16 h-1.5 bg-[#191f32] rounded-full overflow-hidden flex items-center">
+<div class="w-3/4 h-full bg-gradient-to-r from-primary-container to-[#b026ff] shadow-[0_0_6px_rgba(0,240,255,0.8)]"></div>
+</div>
+<span class="font-label-telemetry-sm text-label-telemetry-sm text-primary-container font-bold drop-shadow-[0_0_6px_rgba(0,240,255,0.4)]">-12.4 dB</span>
+</div>
+<div class="hidden lg:flex items-center gap-space-md font-label-telemetry-sm text-label-telemetry-sm bg-[#0a0c13] px-space-md py-space-xs rounded border border-[#232942] text-[#8d96b0]">
+<span class="text-on-surface-variant"><span class="text-[#8d96b0]">CPU:</span> <strong class="text-primary-container">0.8%</strong></span>
+<span class="text-on-surface-variant"><span class="text-[#8d96b0]">RAM:</span> <strong class="text-[#b026ff]">142 MB</strong></span>
+</div>
+</div>
+</div>
+</header>
+<!-- LEFT NAVIGATION DOCK -->
+<aside class="fixed left-0 top-[44px] bottom-space-lg w-56 bg-[#0a0c13] border-r border-[#232942] z-40 flex flex-col justify-between">
+<div class="flex flex-col">
+<div class="px-space-md py-space-sm font-label-badge text-label-badge text-[#b026ff] uppercase tracking-widest border-b border-[#232942] bg-[#0d0e17] flex items-center justify-between">
+<span>Audio Navigation Dock</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_5px_#00f0ff]"></span>
+</div>
+<nav class="flex flex-col p-space-xs gap-space-xs">
+<a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-xs rounded-sm transition-all font-body-sm font-semibold bg-gradient-to-r from-primary-container/20 via-[#141826] to-transparent text-primary-container border-l-2 border-primary-container shadow-[0_0_12px_rgba(0,240,255,0.2)]" data-path="main-workbench" href="#">
+<span class="material-symbols-outlined text-[16px] text-primary-container">queue_music</span>
+<span>Active Session</span>
+</a>
+<a class="flex items-center gap-space-md px-space-md py-space-xs rounded-sm text-[#8d96b0] hover:text-primary-container hover:bg-[#141826] transition-colors font-body-sm text-body-sm" data-path="library-archive" href="#">
+<span class="material-symbols-outlined text-[16px]">library_music</span>
+<span>Hi-Res Collection</span>
+</a>
+<a class="flex items-center gap-space-md px-space-md py-space-xs rounded-sm text-[#8d96b0] hover:text-[#b026ff] hover:bg-[#141826] transition-colors font-body-sm text-body-sm" data-path="dsp-audio-matrix" href="#">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+<span>DSP Chain Rack</span>
+</a>
+<a class="flex items-center gap-space-md px-space-md py-space-xs rounded-sm text-[#8d96b0] hover:text-primary-container hover:bg-[#141826] transition-colors font-body-sm text-body-sm" data-path="device-telemetry" href="#">
+<span class="material-symbols-outlined text-[16px]">speed</span>
+<span>Driver Stream Buffer</span>
+</a>
+<a class="flex items-center gap-space-md px-space-md py-space-xs rounded-sm text-[#8d96b0] hover:text-meter-peak-pink hover:bg-[#141826] transition-colors font-body-sm text-body-sm" data-path="tag-metadata-editor" href="#">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+<span>ID3 Tag Inspector</span>
+</a>
+</nav>
+</div>
+<div class="p-space-md border-t border-[#232942] bg-[#0d0e17]">
+<div class="font-label-badge text-label-badge text-[#b026ff] uppercase mb-space-xs tracking-wider">Clock Domain</div>
+<div class="font-label-telemetry-sm text-label-telemetry-sm text-primary-container flex items-center justify-between font-mono font-bold">
+<span>MASTER INT</span>
+<span class="text-meter-peak-pink drop-shadow-[0_0_6px_rgba(255,42,133,0.5)]">SYNC LOCKED</span>
+</div>
+</div>
+</aside>
+<!-- MAIN APP BODY -->
+<div class="pl-56">
+<main class="relative pt-[44px] pb-space-lg w-full bg-[#0a0c13] min-h-screen">
+<div class="flex flex-col w-full">
+<!-- PRIMARY 3-COLUMN WORKBENCH CONTAINER -->
+<div class="flex flex-row w-full h-[calc(100vh-68px)] overflow-hidden select-none bg-[#0a0c13]">
+<!-- ========================================================================================= -->
+<!-- 1. LEFT COLUMN: LIBRARY EXPLORER (260px Fixed)                                            -->
+<!-- ========================================================================================= -->
+<aside class="w-[260px] shrink-0 bg-[#0a0c13] flex flex-col h-full relative z-10 border-r border-[#232942]">
+<!-- Panel Header & Quick Query Search -->
+<div class="p-space-xs bg-[#10131d] flex flex-col gap-space-xs border-b border-[#232942]">
+<div class="flex items-center justify-between px-space-xs py-0.5">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[14px] text-primary-container drop-shadow-[0_0_5px_#00f0ff]">folder_special</span>
+<span class="font-headline-sm tracking-wider uppercase text-primary-container font-bold text-[10px] drop-shadow-[0_0_5px_rgba(0,240,255,0.4)]">Library Explorer</span>
+</div>
+<div class="flex items-center gap-0.5">
+<button class="w-5 h-4 flex items-center justify-center text-[#8d96b0] hover:text-primary-container hover:bg-[#191f32] rounded-xs transition-colors" title="Collapse All Nodes">
+<span class="material-symbols-outlined text-[13px]">unfold_less</span>
+</button>
+<button class="w-5 h-4 flex items-center justify-center text-[#8d96b0] hover:text-primary-container hover:bg-[#191f32] rounded-xs transition-colors" title="Rescan Archive">
+<span class="material-symbols-outlined text-[13px]">sync</span>
+</button>
+<button class="w-5 h-4 flex items-center justify-center text-[#8d96b0] hover:text-primary-container hover:bg-[#191f32] rounded-xs transition-colors" title="Mount Storage Node">
+<span class="material-symbols-outlined text-[13px]">create_new_folder</span>
+</button>
+</div>
+</div>
+<!-- Filter Search Bar -->
+<div class="relative flex items-center bg-[#0a0c13] px-space-xs py-0.5 rounded-xs border border-[#232942] focus-within:border-primary-container transition-all">
+<span class="material-symbols-outlined text-[13px] text-primary-container mr-space-xs">search</span>
+<input class="w-full bg-transparent font-body-sm text-body-sm text-[#dbfcff] placeholder:text-[#4b536a] focus:outline-none h-4 text-[11px]" placeholder="Filter hierarchy (regex)..." type="text"/>
+<span class="font-label-badge text-label-badge text-[#8d96b0]">ESC</span>
+</div>
+</div>
+<!-- Hierarchical Tree Navigator -->
+<div class="flex-1 overflow-y-auto px-0.5 py-1 text-[11px] font-body-sm leading-[18px]">
+<!-- Entire Library Root -->
+<div class="flex items-center h-5 px-1 bg-[#141826] text-primary-container font-semibold cursor-pointer border-l-2 border-primary-container">
+<span class="material-symbols-outlined text-[12px] text-primary-container mr-1">arrow_drop_down</span>
+<span class="material-symbols-outlined text-[13px] mr-1.5 text-primary-container">dns</span>
+<span class="truncate">Entire Library</span>
+<span class="ml-auto font-label-telemetry-sm text-label-telemetry-sm text-primary-container font-mono text-[10px]">32,410</span>
+</div>
+<!-- All Artists Branch -->
+<div class="flex items-center h-5 pl-4 pr-1 text-[#8d96b0] hover:text-primary-container hover:bg-[#141826]/40 cursor-pointer">
+<span class="material-symbols-outlined text-[12px] text-[#4b536a] mr-1">arrow_right</span>
+<span class="material-symbols-outlined text-[13px] mr-1 text-[#8d96b0]">group</span>
+<span class="truncate">All Artists</span>
+<span class="ml-auto font-label-telemetry-sm text-label-telemetry-sm text-[#4b536a] text-[10px]">1,248</span>
+</div>
+<!-- All Albums Branch (Expanded) -->
+<div class="flex items-center h-5 pl-4 pr-1 text-[#b026ff] cursor-pointer bg-[#141826]/60">
+<span class="material-symbols-outlined text-[12px] text-[#b026ff] mr-1">arrow_drop_down</span>
+<span class="material-symbols-outlined text-[13px] mr-1 text-[#b026ff]">album</span>
+<span class="truncate font-semibold">All Albums</span>
+<span class="ml-auto font-label-telemetry-sm text-label-telemetry-sm text-[#b026ff] text-[10px]">2,890</span>
+</div>
+<!-- Selected Album Child (Active Glowing Tree Node) -->
+<div class="flex items-center h-5 pl-7 pr-1 bg-[#191f32] text-primary-container cursor-pointer font-medium border-l-2 border-[#b026ff] shadow-[inset_0_0_8px_rgba(0,240,255,0.15)]">
+<div class="w-1.5 h-1.5 rounded-full bg-primary-container mr-1.5 shadow-[0_0_6px_#00f0ff]"></div>
+<span class="truncate font-semibold text-primary drop-shadow-[0_0_4px_rgba(0,240,255,0.3)]">Daft Punk - RAM [Deluxe]</span>
+<span class="ml-auto font-label-badge text-label-badge px-1 bg-[#ff2a85]/20 text-meter-peak-pink border border-meter-peak-pink/30 rounded-xs text-[9px]">14</span>
+</div>
+<!-- Other Album Children -->
+<div class="flex items-center h-5 pl-7 pr-1 text-[#8d96b0] hover:text-on-surface hover:bg-[#141826] cursor-pointer">
+<span class="material-symbols-outlined text-[11px] text-[#4b536a] mr-1.5">audio_file</span>
+<span class="truncate">Radiohead - OK Computer [24/96]</span>
+<span class="ml-auto font-label-telemetry-sm text-label-telemetry-sm text-[#4b536a] text-[10px]">23</span>
+</div>
+<div class="flex items-center h-5 pl-7 pr-1 text-[#8d96b0] hover:text-on-surface hover:bg-[#141826] cursor-pointer">
+<span class="material-symbols-outlined text-[11px] text-[#4b536a] mr-1.5">audio_file</span>
+<span class="truncate">Miles Davis - Kind of Blue [SACD]</span>
+<span class="ml-auto font-label-telemetry-sm text-label-telemetry-sm text-[#4b536a] text-[10px]">6</span>
+</div>
+<div class="flex items-center h-5 pl-7 pr-1 text-[#8d96b0] hover:text-on-surface hover:bg-[#141826] cursor-pointer">
+<span class="material-symbols-outlined text-[11px] text-[#4b536a] mr-1.5">audio_file</span>
+<span class="truncate">Pink Floyd - Dark Side [Immersion]</span>
+<span class="ml-auto font-label-telemetry-sm text-label-telemetry-sm text-[#4b536a] text-[10px]">10</span>
+</div>
+<!-- Genres & Years Branches -->
+<div class="flex items-center h-5 pl-4 pr-1 text-[#8d96b0] hover:text-on-surface hover:bg-[#141826] cursor-pointer">
+<span class="material-symbols-outlined text-[12px] text-[#4b536a] mr-1">arrow_right</span>
+<span class="material-symbols-outlined text-[13px] mr-1 text-[#8d96b0]">category</span>
+<span class="truncate">Genres (Electronic, Rock...)</span>
+</div>
+<div class="flex items-center h-5 pl-4 pr-1 text-[#8d96b0] hover:text-on-surface hover:bg-[#141826] cursor-pointer">
+<span class="material-symbols-outlined text-[12px] text-[#4b536a] mr-1">arrow_right</span>
+<span class="material-symbols-outlined text-[13px] mr-1 text-[#8d96b0]">calendar_month</span>
+<span class="truncate">Years (1960 - 2024)</span>
+</div>
+<!-- Playlists Group -->
+<div class="mt-1 flex items-center h-5 px-1 bg-[#10131d] text-[#b026ff] font-bold cursor-pointer border-t border-b border-[#232942]">
+<span class="material-symbols-outlined text-[12px] text-[#b026ff] mr-1">arrow_drop_down</span>
+<span class="material-symbols-outlined text-[13px] mr-1 text-[#b026ff]">queue_music</span>
+<span class="truncate">Playlists</span>
+<span class="ml-auto font-label-telemetry-sm text-label-telemetry-sm text-[#b026ff] text-[10px]">48</span>
+</div>
+<div class="flex items-center h-5 pl-5 pr-1 bg-[#b026ff]/15 text-[#b026ff] cursor-pointer font-medium border-l-2 border-meter-peak-pink">
+<span class="material-symbols-outlined text-[12px] mr-1 text-meter-peak-pink">graphic_eq</span>
+<span class="truncate font-semibold text-[#f0f4fc]">Audiophile Benchmark 24b</span>
+<span class="ml-auto font-label-badge text-label-badge text-meter-peak-pink bg-meter-peak-pink/10 px-1 rounded-xs text-[9px] drop-shadow-[0_0_5px_rgba(255,42,133,0.4)]">[ACTIVE]</span>
+</div>
+<div class="flex items-center h-5 pl-5 pr-1 text-[#8d96b0] hover:text-on-surface hover:bg-[#141826] cursor-pointer">
+<span class="material-symbols-outlined text-[12px] mr-1 text-[#4b536a]">playlist_play</span>
+<span class="truncate">Late Night Synthwave</span>
+<span class="ml-auto font-label-telemetry-sm text-label-telemetry-sm text-[#4b536a] text-[10px]">86</span>
+</div>
+<div class="flex items-center h-5 pl-5 pr-1 text-[#8d96b0] hover:text-on-surface hover:bg-[#141826] cursor-pointer">
+<span class="material-symbols-outlined text-[12px] mr-1 text-[#4b536a]">playlist_play</span>
+<span class="truncate">Spatial Imaging Tests</span>
+<span class="ml-auto font-label-telemetry-sm text-label-telemetry-sm text-[#4b536a] text-[10px]">40</span>
+</div>
+<div class="flex items-center h-5 pl-5 pr-1 text-[#8d96b0] hover:text-on-surface hover:bg-[#141826] cursor-pointer">
+<span class="material-symbols-outlined text-[12px] mr-1 text-[#4b536a]">playlist_play</span>
+<span class="truncate">Classical Masterpieces</span>
+<span class="ml-auto font-label-telemetry-sm text-label-telemetry-sm text-[#4b536a] text-[10px]">310</span>
+</div>
+<!-- Smart Playlists Sub-tree -->
+<div class="flex items-center h-5 pl-5 pr-1 text-[#8d96b0] hover:text-on-surface cursor-pointer">
+<span class="material-symbols-outlined text-[12px] text-[#4b536a] mr-1">arrow_drop_down</span>
+<span class="material-symbols-outlined text-[12px] mr-1 text-[#b026ff]">bolt</span>
+<span class="truncate text-[#8d96b0]">Smart Filters</span>
+</div>
+<div class="flex items-center h-4 pl-8 pr-1 text-[#8d96b0] hover:text-primary-container cursor-pointer">
+<span class="truncate">• Recently Added (30 Days)</span>
+</div>
+<div class="flex items-center h-4 pl-8 pr-1 text-[#8d96b0] hover:text-primary-container cursor-pointer">
+<span class="truncate">• Top Rated 5-Stars (824)</span>
+</div>
+<div class="flex items-center h-4 pl-8 pr-1 text-meter-peak-pink hover:text-[#ff007f] cursor-pointer font-medium">
+<span class="truncate">• Low Dynamic Range (&lt; DR6)</span>
+</div>
+<!-- Storage Mounts -->
+<div class="mt-1 flex items-center h-5 px-1 bg-[#10131d] text-[#e3e1e9] font-medium cursor-pointer border-t border-[#232942]">
+<span class="material-symbols-outlined text-[12px] text-[#4b536a] mr-1">arrow_drop_down</span>
+<span class="material-symbols-outlined text-[13px] mr-1 text-primary-container">hard_drive</span>
+<span class="truncate">Storage Mounts</span>
+</div>
+<div class="flex items-center h-5 pl-5 pr-1 text-[#8d96b0] hover:text-primary-container hover:bg-[#141826] cursor-pointer">
+<span class="material-symbols-outlined text-[12px] mr-1 text-primary-container">dns</span>
+<span class="truncate">[D:] Hi-Res Lossless Arch</span>
+</div>
+<div class="flex items-center h-5 pl-5 pr-1 text-[#8d96b0] hover:text-primary-container hover:bg-[#141826] cursor-pointer">
+<span class="material-symbols-outlined text-[12px] mr-1 text-[#b026ff]">cloud_done</span>
+<span class="truncate">[N:] NAS SACD Tapes</span>
+</div>
+<!-- Devices & Streams -->
+<div class="mt-1 flex items-center h-5 px-1 bg-[#10131d] text-[#e3e1e9] font-medium cursor-pointer border-t border-[#232942]">
+<span class="material-symbols-outlined text-[12px] text-[#4b536a] mr-1">arrow_drop_down</span>
+<span class="material-symbols-outlined text-[13px] mr-1 text-meter-peak-pink">router</span>
+<span class="truncate">Hardware Nodes</span>
+</div>
+<div class="flex items-center h-5 pl-5 pr-1 text-primary-container cursor-pointer font-medium">
+<span class="material-symbols-outlined text-[12px] mr-1 text-primary-container">stay_current_portrait</span>
+<span class="truncate">FiiO M15s DAP [84%]</span>
+</div>
+<div class="flex items-center h-5 pl-5 pr-1 text-[#8d96b0] hover:text-on-surface hover:bg-[#141826] cursor-pointer">
+<span class="material-symbols-outlined text-[12px] mr-1 text-[#4b536a]">cell_tower</span>
+<span class="truncate">DLNA HiFi Server</span>
+</div>
+</div>
+<!-- Left Column Footnote -->
+<div class="p-space-xs bg-[#0d0e17] flex items-center justify-between font-label-telemetry-sm text-label-telemetry-sm text-[#8d96b0] border-t border-[#232942]">
+<span class="flex items-center gap-1 text-[10px]">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_5px_#00f0ff]"></span>
+              DB READY
+            </span>
+<span class="font-label-badge text-label-badge text-[#b026ff]">SCAN: 0.12ms</span>
+</div>
+</aside>
+<!-- ========================================================================================= -->
+<!-- 2. CENTER COLUMN: MAIN WORKBENCH (3 Stacked Bento Panels)                                 -->
+<!-- ========================================================================================= -->
+<main class="flex-1 flex flex-col h-full overflow-hidden bg-[#0a0c13]">
+<!-- TOP PANEL: CONSOLIDATED WINAMP PLAYBACK DECK -->
+<section class="bg-[#10131d] p-space-xs flex flex-col gap-space-xs shrink-0 border-b border-[#232942]">
+<!-- VFD Screen Enclosure + Marquee Display -->
+<div class="grid grid-cols-12 gap-space-xs bg-[#06070a] p-space-xs rounded-sm border border-[#232942] shadow-[inset_0_0_15px_rgba(0,0,0,0.8)]">
+<!-- Cyberpunk Neon Blue/Pink VFD Counter -->
+<div class="col-span-4 bg-[#0a0c13] p-space-xs rounded-sm flex flex-col justify-between relative overflow-hidden border border-[#1b2137]">
+<div class="flex items-center justify-between text-[9px] font-label-badge font-mono">
+<span class="text-meter-peak-pink tracking-widest font-bold drop-shadow-[0_0_5px_rgba(255,42,133,0.6)]">STEREO DSD DIRECT</span>
+<span class="text-primary-container animate-pulse font-bold drop-shadow-[0_0_5px_#00f0ff]">TRACK 05 / 13</span>
+</div>
+<div class="flex items-baseline justify-between my-0.5 font-mono">
+<div class="flex items-baseline gap-1">
+<span class="font-label-telemetry-lg text-label-telemetry-lg text-primary-container font-black tracking-tight drop-shadow-[0_0_12px_rgba(0,240,255,0.7)] text-[24px]">
+                      02:44
+                    </span>
+<span class="font-label-telemetry-sm text-label-telemetry-sm text-[#4b536a]">.18</span>
+</div>
+<div class="text-right">
+<span class="font-label-telemetry-md text-label-telemetry-md text-meter-peak-pink font-bold drop-shadow-[0_0_8px_rgba(255,42,133,0.6)]">
+                      -01:34
+                    </span>
+<div class="font-label-badge text-label-badge text-[#8d96b0]">REMAINING</div>
+</div>
+</div>
+<!-- VFD Stream Spec Badges -->
+<div class="flex items-center justify-between pt-0.5 text-[9px] font-label-badge text-[#8d96b0] font-mono">
+<span>KBPS: <strong class="text-primary-container drop-shadow-[0_0_4px_#00f0ff]">5824</strong></span>
+<span>KHZ: <strong class="text-[#b026ff] drop-shadow-[0_0_4px_rgba(176,38,255,0.6)]">192.0</strong></span>
+<span>BITS: <strong class="text-meter-peak-pink drop-shadow-[0_0_4px_rgba(255,42,133,0.6)]">24</strong></span>
+</div>
+</div>
+<!-- Marquee LED Ticker + Telemetry Tags -->
+<div class="col-span-8 flex flex-col justify-between bg-[#0a0c13] p-space-xs rounded-sm border border-[#1b2137]">
+<!-- Scrolling Monospace Marquee -->
+<div class="bg-[#06070a] px-2 py-1 rounded-sm overflow-hidden flex items-center border border-[#232942]">
+<div class="font-label-telemetry-md text-label-telemetry-md text-primary font-bold tracking-tight truncate flex items-center gap-2">
+<span class="inline-block w-2 h-2 rounded-full bg-meter-peak-pink animate-ping shadow-[0_0_8px_#ff2a85]"></span>
+<span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-[#b026ff] to-meter-peak-pink font-semibold">
+                      Daft Punk feat. Julian Casablancas - Instant Crush [FLAC 24/192 Lossless] • Track 05/13 • Random Access Memories
+                    </span>
+</div>
+</div>
+<!-- Format & Engine Badges Strip -->
+<div class="flex items-center justify-between gap-1 mt-1 flex-wrap">
+<div class="flex items-center gap-1 font-mono">
+<span class="px-1.5 py-0.5 rounded-xs bg-primary-container/15 border border-primary-container/40 text-primary-container font-label-badge text-label-badge font-bold drop-shadow-[0_0_4px_rgba(0,240,255,0.4)]">FLAC</span>
+<span class="px-1.5 py-0.5 rounded-xs bg-[#b026ff]/15 border border-[#b026ff]/40 text-[#b026ff] font-label-badge text-label-badge font-bold drop-shadow-[0_0_4px_rgba(176,38,255,0.4)]">24-BIT</span>
+<span class="px-1.5 py-0.5 rounded-xs bg-[#141826] border border-[#232942] text-[#e3e1e9] font-label-badge text-label-badge">192kHz</span>
+<span class="px-1.5 py-0.5 rounded-xs bg-[#141826] border border-[#232942] text-[#e3e1e9] font-label-badge text-label-badge">2.0 STEREO</span>
+<span class="px-1.5 py-0.5 rounded-xs bg-primary-container/10 border border-primary-container/40 text-primary-container font-label-badge text-label-badge font-bold">BIT-PERFECT WASAPI</span>
+<span class="px-1.5 py-0.5 rounded-xs bg-meter-peak-pink/15 border border-meter-peak-pink/40 text-meter-peak-pink font-label-badge text-label-badge font-bold drop-shadow-[0_0_4px_rgba(255,42,133,0.4)]">DR: 12</span>
+</div>
+<div class="font-label-telemetry-sm text-label-telemetry-sm text-[#8d96b0] flex items-center gap-1.5 font-mono">
+<span>BUFFER: <strong class="text-primary-container">45ms</strong></span>
+<span>VOL: <strong class="text-meter-peak-pink">-8.5 dB</strong></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Tactile Deck Controls & Waveform Scrub Slider -->
+<div class="flex items-center gap-space-md pt-0.5">
+<!-- Keycap Transport Buttons -->
+<div class="flex items-center gap-1 shrink-0">
+<button class="w-7 h-6 flex items-center justify-center bg-[#141826] hover:bg-[#191f32] active:bg-[#0a0c13] text-[#8d96b0] hover:text-primary-container border border-[#232942] rounded-xs shadow-sm transition-all" title="Previous Track">
+<span class="material-symbols-outlined text-[15px]">skip_previous</span>
+</button>
+<button class="w-7 h-6 flex items-center justify-center bg-[#141826] hover:bg-[#191f32] active:bg-[#0a0c13] text-[#8d96b0] hover:text-primary-container border border-[#232942] rounded-xs shadow-sm transition-all" title="Fast Rewind">
+<span class="material-symbols-outlined text-[15px]">fast_rewind</span>
+</button>
+<!-- Neon Play Button with Cyan Glow -->
+<button class="w-8 h-6 flex items-center justify-center bg-primary-container text-on-primary-container rounded-xs shadow-[0_0_12px_rgba(0,240,255,0.7)] active:scale-95 transition-all font-bold" title="Play">
+<span class="material-symbols-outlined text-[17px]">play_arrow</span>
+</button>
+<button class="w-7 h-6 flex items-center justify-center bg-[#141826] hover:bg-[#191f32] active:bg-[#0a0c13] text-[#8d96b0] hover:text-[#b026ff] border border-[#232942] rounded-xs shadow-sm transition-all" title="Pause">
+<span class="material-symbols-outlined text-[15px]">pause</span>
+</button>
+<button class="w-7 h-6 flex items-center justify-center bg-[#141826] hover:bg-[#191f32] active:bg-[#0a0c13] text-[#8d96b0] hover:text-meter-peak-pink border border-[#232942] rounded-xs shadow-sm transition-all" title="Stop">
+<span class="material-symbols-outlined text-[15px]">stop</span>
+</button>
+<button class="w-7 h-6 flex items-center justify-center bg-[#141826] hover:bg-[#191f32] active:bg-[#0a0c13] text-[#8d96b0] hover:text-primary-container border border-[#232942] rounded-xs shadow-sm transition-all" title="Fast Forward">
+<span class="material-symbols-outlined text-[15px]">fast_forward</span>
+</button>
+<button class="w-7 h-6 flex items-center justify-center bg-[#141826] hover:bg-[#191f32] active:bg-[#0a0c13] text-[#8d96b0] hover:text-primary-container border border-[#232942] rounded-xs shadow-sm transition-all" title="Next Track">
+<span class="material-symbols-outlined text-[15px]">skip_next</span>
+</button>
+<div class="h-4 w-[1px] bg-[#232942] mx-0.5"></div>
+<button class="w-6 h-6 flex items-center justify-center bg-[#141826] text-[#b026ff] border border-[#b026ff]/30 shadow-[0_0_6px_rgba(176,38,255,0.3)] rounded-xs" title="Shuffle ON">
+<span class="material-symbols-outlined text-[13px]">shuffle</span>
+</button>
+<button class="w-6 h-6 flex items-center justify-center bg-[#141826] text-primary-container border border-primary-container/30 shadow-[0_0_6px_rgba(0,240,255,0.3)] rounded-xs" title="Repeat Track">
+<span class="material-symbols-outlined text-[13px]">repeat_one</span>
+</button>
+</div>
+<!-- Precision Seekbar with Waveform / Cue Markers -->
+<div class="flex-1 flex flex-col justify-center gap-0.5 font-mono">
+<div class="flex justify-between items-center text-[10px] font-label-telemetry-sm text-[#8d96b0]">
+<span class="text-primary-container font-bold">02:44 (63.5%)</span>
+<span class="text-meter-peak-pink">Cue Mark #3: Bridge [02:30]</span>
+<span>04:18</span>
+</div>
+<!-- Recessed Waveform Scrub Track -->
+<div class="relative h-4 bg-[#06070a] border border-[#232942] rounded-xs overflow-hidden flex items-center cursor-pointer shadow-inner group">
+<!-- Cached Audio Background -->
+<div class="absolute left-0 top-0 bottom-0 w-[78%] bg-[#191f32]/60"></div>
+<!-- Active Playback Progress (Cyan to Purple Neon Gradient) -->
+<div class="absolute left-0 top-0 bottom-0 w-[63.5%] bg-gradient-to-r from-primary-container/40 via-[#b026ff]/50 to-primary-container/80 shadow-[0_0_12px_rgba(0,240,255,0.5)]"></div>
+<!-- Waveform Bars -->
+<div class="absolute inset-0 flex items-center justify-around opacity-40 pointer-events-none px-1">
+<div class="w-0.5 h-2 bg-primary-container"></div><div class="w-0.5 h-3 bg-primary-container"></div>
+<div class="w-0.5 h-2 bg-primary-container"></div><div class="w-0.5 h-3.5 bg-primary-container"></div>
+<div class="w-0.5 h-2.5 bg-[#b026ff]"></div><div class="w-0.5 h-3 bg-[#b026ff]"></div>
+<div class="w-0.5 h-1.5 bg-[#b026ff]"></div><div class="w-0.5 h-3 bg-[#b026ff]"></div>
+<div class="w-0.5 h-3.5 bg-meter-peak-pink"></div><div class="w-0.5 h-2 bg-meter-peak-pink"></div>
+<div class="w-0.5 h-3 bg-meter-peak-pink"></div><div class="w-0.5 h-2 bg-meter-peak-pink"></div>
+</div>
+<!-- Neon Pink Cue Marker Flags -->
+<div class="absolute left-[35%] top-0 bottom-0 w-[1.5px] bg-meter-peak-pink z-10 shadow-[0_0_6px_#ff2a85]"></div>
+<div class="absolute left-[58%] top-0 bottom-0 w-[1.5px] bg-meter-peak-pink z-10 shadow-[0_0_6px_#ff2a85]"></div>
+<!-- Scrubber Thumb with Neon Glow -->
+<div class="absolute left-[63.5%] -ml-1 top-0 bottom-0 w-2.5 bg-primary-container shadow-[0_0_10px_#00f0ff] flex items-center justify-center z-20">
+<div class="w-0.5 h-3 bg-[#0a0c13]"></div>
+</div>
+</div>
+</div>
+<!-- Volume & Balance Block -->
+<div class="flex items-center gap-space-xs shrink-0 pl-1 font-mono">
+<span class="material-symbols-outlined text-[14px] text-primary-container">volume_down</span>
+<div class="w-16 h-2 bg-[#06070a] border border-[#232942] rounded-full overflow-hidden flex items-center shadow-inner">
+<div class="w-[72%] h-full bg-gradient-to-r from-primary-container to-[#b026ff] shadow-[0_0_8px_#00f0ff]"></div>
+</div>
+<span class="font-label-telemetry-sm text-label-telemetry-sm text-primary-container font-bold w-12 text-right drop-shadow-[0_0_4px_rgba(0,240,255,0.4)]">-8.5 dB</span>
+<div class="w-8 px-1 py-0.5 bg-[#141826] border border-[#232942] rounded-xs text-[9px] font-label-badge text-center text-[#b026ff] font-bold">BAL: C</div>
+</div>
+</div>
+</section>
+<!-- MIDDLE PANEL: REAL-TIME 80s/90s VFD DOT MATRIX SPECTRUM ANALYZER (MIKE LYNCH ENGINE) -->
+<section class="bg-[#0a0c13] p-space-xs flex flex-col shrink-0 relative overflow-hidden border-b border-[#232942]">
+<!-- Visualizer Mode Selector & Telemetry Bar -->
+<div class="flex items-center justify-between pb-1">
+<div class="flex items-center gap-1 font-mono">
+<span class="px-2 py-0.5 rounded-xs bg-primary-container text-on-primary-container font-label-badge text-label-badge font-bold shadow-[0_0_8px_rgba(0,240,255,0.5)]">VFD SPECTRUM (MIKE LYNCH)</span>
+<span class="px-2 py-0.5 rounded-xs bg-[#10131d] border border-[#232942] text-[#8d96b0] hover:text-[#b026ff] font-label-badge text-label-badge cursor-pointer transition-colors">OSCILLOSCOPE</span>
+<span class="px-2 py-0.5 rounded-xs bg-[#10131d] border border-[#232942] text-[#8d96b0] hover:text-primary-container font-label-badge text-label-badge cursor-pointer transition-colors">STEREO PHASE CORRELATOR</span>
+<span class="px-2 py-0.5 rounded-xs bg-[#10131d] border border-[#232942] text-[#8d96b0] hover:text-meter-peak-pink font-label-badge text-label-badge cursor-pointer transition-colors">SPECTROGRAM</span>
+</div>
+<!-- Stereo VU Clip Telemetry with Neon Purple and Pink -->
+<div class="flex items-center gap-2 font-label-badge text-label-badge font-mono">
+<div class="flex items-center gap-1">
+<span class="text-[#8d96b0]">L:</span>
+<div class="w-14 h-1.5 bg-[#191f32] rounded-full overflow-hidden flex border border-[#232942]">
+<div class="w-[85%] bg-gradient-to-r from-primary-container via-[#b026ff] to-meter-peak-pink shadow-[0_0_6px_#ff2a85]"></div>
+</div>
+<span class="text-primary-container font-bold">-1.8dB</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-[#8d96b0]">R:</span>
+<div class="w-14 h-1.5 bg-[#191f32] rounded-full overflow-hidden flex border border-[#232942]">
+<div class="w-[82%] bg-gradient-to-r from-primary-container via-[#b026ff] to-meter-peak-pink shadow-[0_0_6px_#ff2a85]"></div>
+</div>
+<span class="text-primary-container font-bold">-2.1dB</span>
+</div>
+<span class="px-1.5 py-0.5 bg-meter-peak-pink/15 border border-meter-peak-pink/40 text-meter-peak-pink font-bold rounded-xs shadow-[0_0_8px_rgba(255,42,133,0.3)]">CLIP: CLEAR</span>
+</div>
+</div>
+<!-- Visualizer Grid Canvas Area: High-Density VFD Dot Matrix Display (1px Bar + 1px Space, 1px Dot + 1px Gap) -->
+<div class="relative h-24 bg-[#06070a] rounded-xs border border-[#1b2137] overflow-hidden flex flex-row items-end px-2 pt-2 pb-1 shadow-[inset_0_0_15px_rgba(0,0,0,0.9)]">
+<!-- Y-Axis dB Scale Markers -->
+<div class="absolute left-1 top-1 bottom-4 flex flex-col justify-between font-label-badge text-label-badge text-[#4b536a] pointer-events-none text-[8px] z-10 font-mono">
+<span>+6dB</span>
+<span> 0dB</span>
+<span>-12dB</span>
+<span>-24dB</span>
+<span>-48dB</span>
+</div>
+<!-- Background Oscilloscope Graticule Lines -->
+<div class="absolute inset-0 grid grid-rows-4 grid-cols-8 opacity-15 pointer-events-none">
+<div class="border-b border-[#353d59]"></div><div class="border-b border-[#353d59]"></div>
+<div class="border-b border-[#353d59]"></div><div class="border-b border-[#353d59]"></div>
+<div class="border-b border-[#353d59]"></div><div class="border-b border-[#353d59]"></div>
+<div class="border-b border-[#353d59]"></div><div class="border-b border-[#353d59]"></div>
+</div>
+<!-- Interactive High-Resolution HTML5 VFD Canvas -->
+<div class="w-full h-full pl-6 z-0 flex items-end relative">
+<canvas class="w-full h-full block cursor-crosshair" id="vfd-spectrum-canvas"></canvas>
+</div>
+</div>
+<!-- Frequency X-Axis Calibration Labels -->
+<div class="flex justify-between pl-6 pr-2 pt-0.5 font-label-telemetry-sm text-label-telemetry-sm text-[#8d96b0] text-[9px] font-mono">
+<span class="text-primary-container">20Hz</span>
+<span>50</span>
+<span>100</span>
+<span>250</span>
+<span class="text-[#b026ff]">500</span>
+<span class="text-[#b026ff]">1kHz</span>
+<span>2k</span>
+<span>4k</span>
+<span class="text-meter-peak-pink">8k</span>
+<span class="text-meter-peak-pink">16k</span>
+<span class="text-meter-peak-pink">20kHz</span>
+</div>
+<!-- Mike Lynch VFD Plugin Telemetry Bar -->
+<div class="flex items-center justify-between px-1 pt-1 font-mono text-[9px] text-[#8d96b0] border-t border-[#1b2137]/60 mt-0.5">
+<div class="flex items-center gap-1.5 truncate">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_5px_#00f0ff] animate-pulse"></span>
+<span class="text-primary-container font-bold uppercase tracking-wider">Classic VFD Spectrum [Mike Lynch Engine]</span>
+<span class="text-[#353d59]">|</span>
+<span class="text-primary-container" id="vfd-bars-stat">BARS: 412</span>
+<span class="text-[#353d59]">|</span>
+<span>WIDTH: <strong class="text-white">1px</strong></span>
+<span class="text-[#353d59]">|</span>
+<span>H-GAP: <strong class="text-white">1px</strong></span>
+<span class="text-[#353d59]">|</span>
+<span>V-GAP: <strong class="text-white">1px</strong></span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span>FALLOFF: <strong class="text-[#b026ff]">12</strong></span>
+<span class="text-[#353d59]">|</span>
+<span>PEAK-RATE: <strong class="text-meter-peak-pink font-bold">199</strong></span>
+<span class="text-[#353d59]">|</span>
+<span class="px-1 rounded-xs bg-[#141826] border border-[#232942] text-primary-container font-bold text-[8px]">PRESET: CLASSIC LED</span>
+</div>
+</div>
+</section>
+<!-- BOTTOM PANEL: FOOBAR2000 COLUMNS UI TRACK LIST -->
+<section class="flex-1 flex flex-col min-h-0 bg-[#0a0c13]">
+<!-- Playlist Utility Header -->
+<div class="h-6 bg-[#10131d] px-space-xs flex items-center justify-between shrink-0 border-b border-[#232942] text-[11px]">
+<div class="flex items-center gap-space-md">
+<span class="font-headline-sm font-bold text-on-surface text-[11px] flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-meter-peak-pink shadow-[0_0_6px_#ff2a85]"></span>
+                  Active Playlist: Audiophile Benchmark 24-bit
+                </span>
+<span class="font-label-badge text-label-badge text-primary-container font-mono">13 Tracks Shown (Selection: #05)</span>
+</div>
+<div class="flex items-center gap-1">
+<div class="flex items-center bg-[#0a0c13] px-1.5 py-0.5 rounded-xs border border-[#232942]">
+<span class="material-symbols-outlined text-[12px] text-primary-container mr-1">filter_list</span>
+<input class="bg-transparent font-body-sm text-body-sm text-[#dbfcff] text-[10px] w-28 focus:outline-none" placeholder="Search tracks..." type="text"/>
+</div>
+<button class="px-1.5 py-0.5 rounded-xs bg-[#141826] border border-[#232942] text-[#8d96b0] hover:text-primary-container font-label-badge text-label-badge">COLUMNS (13)</button>
+<button class="px-1.5 py-0.5 rounded-xs bg-[#141826] border border-[#232942] text-[#b026ff] hover:text-[#ff2a85] font-label-badge text-label-badge">GROUP: ALBUM ARTIST</button>
+</div>
+</div>
+<!-- Columns UI Matrix Header -->
+<div class="h-[22px] bg-[#141826] grid grid-cols-12 text-[10px] font-label-badge text-[#8d96b0] shrink-0 items-center px-1 border-b border-[#232942] font-mono uppercase">
+<div class="col-span-1 text-center"># / STAT</div>
+<div class="col-span-3 truncate pl-1">TRACK TITLE</div>
+<div class="col-span-2 truncate">ARTIST</div>
+<div class="col-span-2 truncate">ALBUM</div>
+<div class="col-span-1 text-center">GENRE</div>
+<div class="col-span-1 text-center">FORMAT</div>
+<div class="col-span-1 text-right">DR / SIZE</div>
+<div class="col-span-1 text-right pr-2">LENGTH</div>
+</div>
+<!-- Dense Tabular Rows -->
+<div class="flex-1 overflow-y-auto text-[11px] font-body-sm select-text">
+<!-- Row 01 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0a0c13] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">01</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">Give Life Back to Music</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">French House</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR10 • 172M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">04:35</div>
+</div>
+<!-- Row 02 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0d0f17] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">02</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">The Game of Love</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">Downtempo</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR11 • 204M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">05:22</div>
+</div>
+<!-- Row 03 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0a0c13] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">03</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">Giorgio by Moroder</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">Synth-pop</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR12 • 370M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">09:05</div>
+</div>
+<!-- Row 04 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0d0f17] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">04</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">Within</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">Ambient Piano</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR13 • 134M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">03:48</div>
+</div>
+<!-- Row 05 (ACTIVE PLAYING ROW WITH HOT NEON PINK HIGHLIGHT & CYAN GLOW) -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-gradient-to-r from-meter-peak-pink/25 via-[#191f32] to-[#0a0c13] text-primary-container cursor-pointer border-l-4 border-meter-peak-pink shadow-[0_0_12px_rgba(255,42,133,0.35)]">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center font-bold flex items-center justify-center gap-1 font-mono">
+<span class="material-symbols-outlined text-[13px] text-meter-peak-pink animate-pulse drop-shadow-[0_0_6px_#ff2a85]">volume_up</span>
+<span class="text-meter-peak-pink font-bold">05</span>
+</div>
+<div class="col-span-3 font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-container to-[#b026ff] truncate pl-1 flex items-center gap-1.5 drop-shadow-[0_0_6px_rgba(0,240,255,0.4)]">
+<span>Instant Crush (feat. Julian Casablancas)</span>
+</div>
+<div class="col-span-2 text-primary-container truncate font-semibold">Daft Punk</div>
+<div class="col-span-2 text-[#b026ff] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-meter-peak-pink font-semibold truncate">Electro Rock</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono font-bold bg-primary-container/10 border border-primary-container/30 rounded-xs">5824 kbps</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono font-bold drop-shadow-[0_0_5px_rgba(255,42,133,0.5)]">DR12 • 185M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-primary-container font-mono font-bold">04:18</div>
+</div>
+<!-- Row 06 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0d0f17] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">06</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">Lose Yourself to Dance</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">Funk / Disco</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR11 • 235M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">05:53</div>
+</div>
+<!-- Row 07 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0a0c13] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">07</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">Touch (feat. Paul Williams)</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">Prog Pop</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR13 • 328M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">08:18</div>
+</div>
+<!-- Row 08 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0d0f17] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">08</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">Get Lucky (feat. Pharrell Williams)</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">Nu-Disco</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR12 • 252M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">06:09</div>
+</div>
+<!-- Row 09 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0a0c13] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">09</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">Beyond</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">Orchestral</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR11 • 189M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">04:50</div>
+</div>
+<!-- Row 10 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0d0f17] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">10</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">Motherboard</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">Instrumental</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR12 • 218M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">05:41</div>
+</div>
+<!-- Row 11 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0a0c13] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">11</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">Fragments of Time</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">Soft Rock</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR11 • 184M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">04:39</div>
+</div>
+<!-- Row 12 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0d0f17] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">12</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">Doin' It Right (feat. Panda Bear)</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">Vocoder</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR10 • 160M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">04:11</div>
+</div>
+<!-- Row 13 -->
+<div class="h-[22px] grid grid-cols-12 items-center px-1 bg-[#0a0c13] hover:bg-[#141826] cursor-pointer border-b border-[#1b2137]/60">
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-center text-[#8d96b0] font-mono">13</div>
+<div class="col-span-3 font-medium text-on-surface truncate pl-1">Contact</div>
+<div class="col-span-2 text-[#8d96b0] truncate">Daft Punk</div>
+<div class="col-span-2 text-[#4b536a] truncate">Random Access Memories</div>
+<div class="col-span-1 text-center text-[10px] text-[#8d96b0] truncate">Space Rock</div>
+<div class="col-span-1 font-label-badge text-label-badge text-center text-primary-container font-mono">FLAC 24/192</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right text-meter-peak-pink font-mono">DR09 • 267M</div>
+<div class="col-span-1 font-label-telemetry-sm text-label-telemetry-sm text-right pr-2 text-on-surface font-mono">06:23</div>
+</div>
+</div>
+</section>
+</main>
+<!-- ========================================================================================= -->
+<!-- 3. RIGHT COLUMN: DSP / METADATA / LYRICS INSPECTOR (320px Fixed)                         -->
+<!-- ========================================================================================= -->
+<aside class="w-[320px] shrink-0 bg-[#0a0c13] flex flex-col h-full relative z-10 border-l border-[#232942]">
+<!-- Tab Control Bar Header -->
+<div class="h-7 bg-[#10131d] px-1 flex items-center gap-1 border-b border-[#232942] shrink-0">
+<button class="px-2 py-0.5 rounded-xs bg-[#191f32] text-primary-container border-b-2 border-primary-container font-label-badge text-label-badge font-bold shadow-[0_0_8px_rgba(0,240,255,0.4)]">EQUALIZER 10B</button>
+<button class="px-2 py-0.5 rounded-xs bg-transparent text-[#8d96b0] hover:text-[#b026ff] font-label-badge text-label-badge transition-colors">LIVE LYRICS</button>
+<button class="px-2 py-0.5 rounded-xs bg-transparent text-[#8d96b0] hover:text-meter-peak-pink font-label-badge text-label-badge transition-colors">TAG INSPECTOR</button>
+</div>
+<!-- Main Inspection Scrollable Body -->
+<div class="flex-1 overflow-y-auto flex flex-col">
+<!-- ========================================================= -->
+<!-- TAB 1: 10-BAND GRAPHIC EQUALIZER RACK                     -->
+<!-- ========================================================= -->
+<div class="p-space-xs bg-[#10131d] border-b border-[#232942] flex flex-col gap-space-xs">
+<!-- EQ Controls Header -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-meter-peak-pink shadow-[0_0_6px_#ff2a85]"></span>
+<span class="font-headline-sm text-headline-sm font-bold text-[#e3e1e9] text-[11px]">Graphic EQ Engine</span>
+<span class="px-1.5 py-0.2 bg-meter-peak-pink/15 border border-meter-peak-pink/40 text-meter-peak-pink font-label-badge text-label-badge font-bold">ACTIVE</span>
+</div>
+<div class="flex items-center gap-1">
+<select class="bg-[#0a0c13] text-primary-container font-label-badge text-label-badge px-1 py-0.5 rounded-xs focus:outline-none border border-[#232942] text-[9px]">
+<option>Acoustic Reference (Flat)</option>
+<option>Harman Target +2dB Sub</option>
+<option>Rock V-Shape Classic</option>
+<option>Vocal Intelligibility</option>
+</select>
+</div>
+</div>
+<!-- Preamp Slider Row -->
+<div class="flex items-center justify-between bg-[#0a0c13] px-2 py-1 rounded-xs border border-[#232942]">
+<span class="font-label-badge text-label-badge text-[#8d96b0]">PREAMP GAIN</span>
+<div class="w-32 h-1.5 bg-[#191f32] rounded-full overflow-hidden flex items-center">
+<div class="w-1/2 h-full bg-gradient-to-r from-primary-container to-[#b026ff] shadow-[0_0_6px_#00f0ff]"></div>
+</div>
+<span class="font-label-telemetry-sm text-label-telemetry-sm text-primary-container font-mono text-[10px] font-bold">0.0 dB</span>
+</div>
+<!-- 10 Vertical Fader Slots: Neon Purple Tracks with Pink/Cyan Thumbs -->
+<div class="h-28 bg-[#06070a] p-2 rounded-xs border border-[#1b2137] flex items-end justify-between relative shadow-inner">
+<!-- Center 0dB Reference Line -->
+<div class="absolute left-2 right-2 top-1/2 h-[1px] bg-[#353d59]/40 pointer-events-none"></div>
+<!-- 31Hz -->
+<div class="flex flex-col items-center h-full justify-between w-5 font-mono">
+<span class="text-[8px] font-label-telemetry-sm text-primary-container font-bold drop-shadow-[0_0_4px_#00f0ff]">+2.4</span>
+<div class="relative w-1.5 h-16 bg-[#191f32] rounded-full flex flex-col justify-end items-center">
+<div class="w-full bg-[#00f0ff] rounded-full shadow-[0_0_6px_#00f0ff]" style="height: 60%;"></div>
+<div class="absolute top-[35%] w-3 h-1.5 bg-meter-peak-pink rounded-xs shadow-[0_0_6px_#ff2a85]"></div>
+</div>
+<span class="text-[8px] font-label-badge text-[#8d96b0]">31</span>
+</div>
+<!-- 62Hz -->
+<div class="flex flex-col items-center h-full justify-between w-5 font-mono">
+<span class="text-[8px] font-label-telemetry-sm text-primary-container font-bold drop-shadow-[0_0_4px_#00f0ff]">+1.8</span>
+<div class="relative w-1.5 h-16 bg-[#191f32] rounded-full flex flex-col justify-end items-center">
+<div class="w-full bg-[#00f0ff] rounded-full shadow-[0_0_6px_#00f0ff]" style="height: 56%;"></div>
+<div class="absolute top-[40%] w-3 h-1.5 bg-meter-peak-pink rounded-xs shadow-[0_0_6px_#ff2a85]"></div>
+</div>
+<span class="text-[8px] font-label-badge text-[#8d96b0]">62</span>
+</div>
+<!-- 125Hz -->
+<div class="flex flex-col items-center h-full justify-between w-5 font-mono">
+<span class="text-[8px] font-label-telemetry-sm text-[#8d96b0]">0.0</span>
+<div class="relative w-1.5 h-16 bg-[#191f32] rounded-full flex flex-col justify-end items-center">
+<div class="w-full bg-[#b026ff] rounded-full" style="height: 50%;"></div>
+<div class="absolute top-[48%] w-3 h-1.5 bg-[#b026ff] rounded-xs shadow-[0_0_6px_#b026ff]"></div>
+</div>
+<span class="text-[8px] font-label-badge text-[#8d96b0]">125</span>
+</div>
+<!-- 250Hz -->
+<div class="flex flex-col items-center h-full justify-between w-5 font-mono">
+<span class="text-[8px] font-label-telemetry-sm text-[#b026ff] font-bold">-0.8</span>
+<div class="relative w-1.5 h-16 bg-[#191f32] rounded-full flex flex-col justify-end items-center">
+<div class="w-full bg-[#b026ff] rounded-full" style="height: 44%;"></div>
+<div class="absolute top-[54%] w-3 h-1.5 bg-[#b026ff] rounded-xs shadow-[0_0_6px_#b026ff]"></div>
+</div>
+<span class="text-[8px] font-label-badge text-[#8d96b0]">250</span>
+</div>
+<!-- 500Hz -->
+<div class="flex flex-col items-center h-full justify-between w-5 font-mono">
+<span class="text-[8px] font-label-telemetry-sm text-[#8d96b0]">0.0</span>
+<div class="relative w-1.5 h-16 bg-[#191f32] rounded-full flex flex-col justify-end items-center">
+<div class="w-full bg-[#b026ff] rounded-full" style="height: 50%;"></div>
+<div class="absolute top-[48%] w-3 h-1.5 bg-[#b026ff] rounded-xs shadow-[0_0_6px_#b026ff]"></div>
+</div>
+<span class="text-[8px] font-label-badge text-[#8d96b0]">500</span>
+</div>
+<!-- 1kHz -->
+<div class="flex flex-col items-center h-full justify-between w-5 font-mono">
+<span class="text-[8px] font-label-telemetry-sm text-[#8d96b0]">0.0</span>
+<div class="relative w-1.5 h-16 bg-[#191f32] rounded-full flex flex-col justify-end items-center">
+<div class="w-full bg-[#b026ff] rounded-full" style="height: 50%;"></div>
+<div class="absolute top-[48%] w-3 h-1.5 bg-[#b026ff] rounded-xs shadow-[0_0_6px_#b026ff]"></div>
+</div>
+<span class="text-[8px] font-label-badge text-[#8d96b0]">1k</span>
+</div>
+<!-- 2kHz -->
+<div class="flex flex-col items-center h-full justify-between w-5 font-mono">
+<span class="text-[8px] font-label-telemetry-sm text-primary-container font-bold drop-shadow-[0_0_4px_#00f0ff]">+1.2</span>
+<div class="relative w-1.5 h-16 bg-[#191f32] rounded-full flex flex-col justify-end items-center">
+<div class="w-full bg-[#00f0ff] rounded-full shadow-[0_0_6px_#00f0ff]" style="height: 54%;"></div>
+<div class="absolute top-[43%] w-3 h-1.5 bg-primary-container rounded-xs shadow-[0_0_6px_#00f0ff]"></div>
+</div>
+<span class="text-[8px] font-label-badge text-[#8d96b0]">2k</span>
+</div>
+<!-- 4kHz -->
+<div class="flex flex-col items-center h-full justify-between w-5 font-mono">
+<span class="text-[8px] font-label-telemetry-sm text-meter-peak-pink font-bold drop-shadow-[0_0_4px_#ff2a85]">+2.0</span>
+<div class="relative w-1.5 h-16 bg-[#191f32] rounded-full flex flex-col justify-end items-center">
+<div class="w-full bg-meter-peak-pink rounded-full shadow-[0_0_6px_#ff2a85]" style="height: 58%;"></div>
+<div class="absolute top-[38%] w-3 h-1.5 bg-meter-peak-pink rounded-xs shadow-[0_0_6px_#ff2a85]"></div>
+</div>
+<span class="text-[8px] font-label-badge text-[#8d96b0]">4k</span>
+</div>
+<!-- 8kHz -->
+<div class="flex flex-col items-center h-full justify-between w-5 font-mono">
+<span class="text-[8px] font-label-telemetry-sm text-meter-peak-pink font-bold drop-shadow-[0_0_4px_#ff2a85]">+1.5</span>
+<div class="relative w-1.5 h-16 bg-[#191f32] rounded-full flex flex-col justify-end items-center">
+<div class="w-full bg-meter-peak-pink rounded-full shadow-[0_0_6px_#ff2a85]" style="height: 55%;"></div>
+<div class="absolute top-[42%] w-3 h-1.5 bg-meter-peak-pink rounded-xs shadow-[0_0_6px_#ff2a85]"></div>
+</div>
+<span class="text-[8px] font-label-badge text-[#8d96b0]">8k</span>
+</div>
+<!-- 16kHz -->
+<div class="flex flex-col items-center h-full justify-between w-5 font-mono">
+<span class="text-[8px] font-label-telemetry-sm text-meter-peak-pink font-bold drop-shadow-[0_0_4px_#ff2a85]">+0.8</span>
+<div class="relative w-1.5 h-16 bg-[#191f32] rounded-full flex flex-col justify-end items-center">
+<div class="w-full bg-meter-peak-pink rounded-full shadow-[0_0_6px_#ff2a85]" style="height: 52%;"></div>
+<div class="absolute top-[45%] w-3 h-1.5 bg-meter-peak-pink rounded-xs shadow-[0_0_6px_#ff2a85]"></div>
+</div>
+<span class="text-[8px] font-label-badge text-[#8d96b0]">16k</span>
+</div>
+</div>
+</div>
+<!-- ========================================================= -->
+<!-- TAB 2: LIVE TIME-SYNCED KARAOKE LYRICS PREVIEW            -->
+<!-- ========================================================= -->
+<div class="p-space-xs bg-[#10131d] border-b border-[#232942] flex flex-col gap-1">
+<div class="flex items-center justify-between text-[10px] font-label-badge text-[#8d96b0] font-mono">
+<span class="flex items-center gap-1 text-primary-container">
+<span class="material-symbols-outlined text-[12px]">subtitles</span>
+<span>LRC SYNCED FEED</span>
+</span>
+<span class="text-meter-peak-pink font-bold">OFFSET: +0.00s</span>
+</div>
+<div class="bg-[#06070a] p-2 rounded-xs border border-[#1b2137] flex flex-col gap-1.5 font-body-sm text-[11px] shadow-inner font-mono">
+<div class="text-[#4b536a] truncate text-[10px]">[02:32.40] I didn't want to be the one to forget...</div>
+<div class="text-[#8d96b0] truncate text-[10px]">[02:38.20] Now we've got all this time and love to spare...</div>
+<!-- Active Lyric Line Highlight (Hot Magenta Glow) -->
+<div class="p-1 rounded-xs bg-meter-peak-pink/20 border-l-2 border-meter-peak-pink text-[#ff80bf] font-semibold flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,42,133,0.35)]">
+<span class="font-label-telemetry-sm text-label-telemetry-sm text-meter-peak-pink font-bold text-[10px]">[02:44.15]</span>
+<span class="truncate text-white font-bold">&gt;&gt; And we will never be alone again &lt;&lt;</span>
+</div>
+<div class="text-[#8d96b0] truncate text-[10px]">[02:49.00] Cause I've been thinking about you...</div>
+<div class="text-[#4b536a] truncate text-[10px]">[02:54.10] You have been on my mind...</div>
+</div>
+</div>
+<!-- ========================================================= -->
+<!-- TAB 3: DEEP FILE & ID3V2 METADATA PROPERTIES GRID         -->
+<!-- ========================================================= -->
+<div class="p-space-xs flex-1 flex flex-col gap-1 text-[11px] bg-[#0a0c13]">
+<div class="flex items-center justify-between text-[10px] font-label-badge text-[#8d96b0] pb-0.5 font-mono">
+<span class="flex items-center gap-1 text-[#b026ff]">
+<span class="material-symbols-outlined text-[12px]">badge</span>
+<span>VORBIS / ID3V2.4 TAG INSPECTOR</span>
+</span>
+<span class="text-primary-container font-bold drop-shadow-[0_0_4px_#00f0ff]">CRC32: OK</span>
+</div>
+<!-- Metadata Key-Value Matrix -->
+<div class="bg-[#06070a] rounded-xs p-1 flex flex-col divide-y divide-[#1b2137] font-mono text-[10px] border border-[#1b2137] shadow-inner">
+<div class="py-0.5 flex justify-between">
+<span class="text-[#8d96b0]">TRACK TITLE</span>
+<span class="text-white font-semibold text-right truncate ml-2 font-sans">Instant Crush</span>
+</div>
+<div class="py-0.5 flex justify-between">
+<span class="text-[#8d96b0]">PERFORMER</span>
+<span class="text-primary-container text-right truncate ml-2 font-semibold">Daft Punk (ft. Julian Casablancas)</span>
+</div>
+<div class="py-0.5 flex justify-between">
+<span class="text-[#8d96b0]">ALBUM</span>
+<span class="text-[#b026ff] text-right truncate ml-2 font-sans font-medium">Random Access Memories</span>
+</div>
+<div class="py-0.5 flex justify-between">
+<span class="text-[#8d96b0]">TRACK / DISC</span>
+<span class="text-[#e3e1e9] text-right">05 / 13  |  Disc 01 / 01</span>
+</div>
+<div class="py-0.5 flex justify-between">
+<span class="text-[#8d96b0]">DATE / YEAR</span>
+<span class="text-[#e3e1e9] text-right">2013-05-17 (Orig: 2013)</span>
+</div>
+<div class="py-0.5 flex justify-between">
+<span class="text-[#8d96b0]">COMPOSERS</span>
+<span class="text-[#8d96b0] text-right truncate ml-2">Bangalter, Homem-Christo, Casablancas</span>
+</div>
+<div class="py-0.5 flex justify-between">
+<span class="text-[#8d96b0]">LABEL / ISRC</span>
+<span class="text-meter-peak-pink text-right truncate ml-2 font-semibold">Columbia • USQX91300105</span>
+</div>
+<div class="py-0.5 flex justify-between">
+<span class="text-[#8d96b0]">ACCURATERIP</span>
+<span class="text-primary-container text-right">V2 (Confidence: 42, Match OK)</span>
+</div>
+<div class="py-0.5 flex justify-between">
+<span class="text-[#8d96b0]">REPLAYGAIN</span>
+<span class="text-meter-peak-pink text-right font-bold">Track: -3.42 dB | Peak: 0.998</span>
+</div>
+<div class="py-0.5 flex justify-between">
+<span class="text-[#8d96b0]">AUDIO MD5</span>
+<span class="text-[#4b536a] text-[9px] text-right truncate ml-2">b83f81e902cb402b8813a48e7190011c</span>
+</div>
+<div class="py-0.5 flex flex-col text-[9px]">
+<span class="text-[#8d96b0] mb-0.5">FILE PATH:</span>
+<span class="text-[#4b536a] break-all font-mono">D:\Music\Hi-Res\Daft Punk\2013 - RAM (24-192 FLAC)\05 - Instant Crush.flac</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column Footer Diagnostic Strip -->
+<div class="p-space-xs bg-[#0d0e17] flex items-center justify-between font-label-telemetry-sm text-label-telemetry-sm text-[#8d96b0] border-t border-[#232942] font-mono">
+<span class="text-[10px]">ENCODER: libFLAC 1.4.2</span>
+<span class="font-label-badge text-label-badge text-primary-container font-bold">VERIFIED INTEGRITY</span>
+</div>
+</aside>
+</div>
+</div>
+</main>
+</div>
+<!-- FOOTER STATUS BAR -->
+<footer class="fixed bottom-0 left-0 right-0 z-50 h-space-lg bg-[#08090f] border-t border-[#232942] flex items-center justify-between px-space-md font-label-telemetry-sm text-label-telemetry-sm select-none font-mono">
+<div class="flex items-center gap-space-md truncate">
+<div class="flex items-center gap-space-xs">
+<span class="px-space-xs py-0 rounded bg-primary-container/20 border border-primary-container/50 text-primary-container font-label-badge text-label-badge font-bold shadow-[0_0_6px_rgba(0,240,255,0.4)]">LOSSLESS</span>
+<span class="text-[#dbfcff] font-medium truncate">FLAC 192.0 kHz / 24-bit • Stereo • 5824 kbps • Buffer: 45ms</span>
+</div>
+<span class="text-[#232942]">|</span>
+<span class="text-[#b026ff] truncate">ReplayGain: Album -3.2 dB applied</span>
+</div>
+<div class="hidden md:flex items-center justify-center text-[#8d96b0] truncate px-space-md">
+<span class="truncate">Playlist: 1,482 tracks • 84h 12m • 74.2 GB • Selection: 1 track (4m 18s)</span>
+</div>
+<div class="flex items-center gap-space-md font-label-badge text-label-badge text-[#8d96b0] shrink-0">
+<span class="text-on-surface-variant"><span class="text-[#4b536a]">DITHER:</span> TPDF</span>
+<span class="text-on-surface-variant"><span class="text-[#4b536a]">RESAMPLER:</span> SoX 192k</span>
+<span class="text-on-surface-variant"><span class="text-[#4b536a]">LIMITER:</span> OFF</span>
+<span class="px-space-xs py-0 rounded bg-[#141826] text-meter-peak-pink border border-meter-peak-pink/50 font-bold shadow-[0_0_8px_rgba(255,42,133,0.3)]">ASIO v2</span>
+</div>
+</footer>
+<!-- MIKE LYNCH CLASSIC VFD SPECTRUM ENGINE SCRIPT -->
+<script>
+(function() {
+  const canvas = document.getElementById('vfd-spectrum-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d', { alpha: true });
+  const barsStatEl = document.getElementById('vfd-bars-stat');
+
+  // Specification: Bar width = 1px, horizontal gap = 1px -> stride = 2px
+  const BAR_WIDTH = 1;
+  const BAR_STRIDE = 2; // 1px bar + 1px spacing
+  const DOT_HEIGHT = 1;
+  const DOT_PITCH = 2;  // 1px dot + 1px gap
+
+  // Physics settings per Mike Lynch classic spectrum analyzer:
+  // Fall-off speed: 12, Peak indicator rate: 199 (slow gravity decay)
+  const FALLOFF_SPEED = 0.55; 
+  const PEAK_DECAY = 0.16;
+
+  let width = 0;
+  let height = 0;
+  let numBars = 0;
+  let bars = [];
+  let peaks = [];
+
+  // Pre-calculate dot colors based on vertical ratio:
+  // Bottom: rgb(7, 174, 215) [#07aed7] -> Purple/Violet -> Top: rgb(247, 55, 120) [#f73778]
+  function getDotColor(ratio) {
+    // ratio: 0.0 (bottom) to 1.0 (top)
+    const r1 = 7,   g1 = 174, b1 = 215; // Cyan / neon blue
+    const r2 = 176, g2 = 38,  b2 = 255; // Mid Purple
+    const r3 = 247, g3 = 55,  b3 = 120; // Neon Pink / Magenta
+
+    let r, g, b;
+    if (ratio < 0.5) {
+      const t = ratio * 2;
+      r = Math.round(r1 + (r2 - r1) * t);
+      g = Math.round(g1 + (g2 - g1) * t);
+      b = Math.round(b1 + (b2 - b1) * t);
+    } else {
+      const t = (ratio - 0.5) * 2;
+      r = Math.round(r2 + (r3 - r2) * t);
+      g = Math.round(g2 + (g3 - g2) * t);
+      b = Math.round(b2 + (b3 - b2) * t);
+    }
+    return `rgb(${r},${g},${b})`;
+  }
+
+  let cachedDotStyles = [];
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    width = Math.floor(rect.width);
+    height = Math.floor(rect.height);
+    if (width <= 0 || height <= 0) return;
+
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Dynamic bar calculation: seamlessly fill width
+    numBars = Math.floor(width / BAR_STRIDE);
+    if (barsStatEl) {
+      barsStatEl.textContent = `BARS: ${numBars}`;
+    }
+
+    // Pre-cache dot colors for all vertical dot positions
+    const maxDots = Math.floor(height / DOT_PITCH);
+    cachedDotStyles = [];
+    for (let d = 0; d < maxDots; d++) {
+      const ratio = d / Math.max(1, maxDots - 1);
+      cachedDotStyles.push(getDotColor(ratio));
+    }
+
+    // Reset or adapt bars/peaks
+    const oldBars = bars;
+    const oldPeaks = peaks;
+    bars = new Float32Array(numBars);
+    peaks = new Float32Array(numBars);
+    for (let i = 0; i < numBars; i++) {
+      if (i < oldBars.length) {
+        bars[i] = oldBars[i];
+        peaks[i] = oldPeaks[i];
+      } else {
+        bars[i] = 10;
+        peaks[i] = 10;
+      }
+    }
+  }
+
+  window.addEventListener('resize', resize);
+  // Initial size check
+  setTimeout(resize, 50);
+
+  // Audio wave simulation variables for lifelike frequency dynamics
+  let time = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    if (width <= 0 || height <= 0 || numBars <= 0) {
+      resize();
+      return;
+    }
+
+    time += 0.028;
+
+    // Clear frame
+    ctx.clearRect(0, 0, width, height);
+
+    const maxDots = Math.floor(height / DOT_PITCH);
+
+    // Realistic audio energy synthesis:
+    // Bass peaks on left, mid harmonics, undulating treble roll-off, beat pulse
+    const beatPulse = (Math.sin(time * 3.4) > 0.6) ? 0.35 : 0.05;
+    const subBeat = Math.sin(time * 6.8) * 0.2;
+
+    for (let i = 0; i < numBars; i++) {
+      const normalizedPos = i / numBars; // 0 = 20Hz, 1 = 20kHz
+
+      // Multi-octave wave superposition
+      const w1 = Math.sin(normalizedPos * 14 - time * 4.2);
+      const w2 = Math.cos(normalizedPos * 28 + time * 3.1);
+      const w3 = Math.sin(normalizedPos * 6 + time * 1.5);
+      const w4 = Math.sin(normalizedPos * 48 - time * 7.5) * 0.3;
+
+      // Bass boost on low frequencies, tapering gently towards highs with rhythmic clusters
+      let envelope = Math.pow(1 - normalizedPos, 0.55);
+      // Discrete resonance harmonic peaks (e.g. kick at bass, snare in low-mids, synth hi-mids)
+      const kickPeak = Math.exp(-Math.pow((normalizedPos - 0.06) * 16, 2)) * (0.85 + beatPulse);
+      const bassPeak2 = Math.exp(-Math.pow((normalizedPos - 0.16) * 18, 2)) * 0.65;
+      const midPeak = Math.exp(-Math.pow((normalizedPos - 0.38) * 14, 2)) * 0.72;
+      const vocalPeak = Math.exp(-Math.pow((normalizedPos - 0.52) * 15, 2)) * 0.68;
+      const hiMidPeak = Math.exp(-Math.pow((normalizedPos - 0.68) * 20, 2)) * 0.45;
+      const trebleFlicker = Math.exp(-Math.pow((normalizedPos - 0.88) * 12, 2)) * 0.35;
+
+      const rawSignal = Math.max(0, 
+        0.18 * envelope +
+        0.28 * Math.abs(w1 * w2) + 
+        0.15 * Math.abs(w3) + 
+        w4 +
+        kickPeak + bassPeak2 + midPeak + vocalPeak + hiMidPeak + trebleFlicker
+      );
+
+      // Map rawSignal to dot count
+      const targetDots = Math.min(maxDots - 2, Math.max(1, Math.floor(rawSignal * maxDots * 0.95)));
+
+      // Bar response & fall-off physics
+      if (targetDots > bars[i]) {
+        bars[i] = targetDots; // instant attack
+      } else {
+        bars[i] = Math.max(0, bars[i] - FALLOFF_SPEED);
+      }
+
+      // Peak indicator physics: pushed up by active bar, drops with slow gravity decay
+      if (bars[i] >= peaks[i]) {
+        peaks[i] = Math.min(maxDots - 1, bars[i] + 1);
+      } else {
+        peaks[i] = Math.max(0, peaks[i] - PEAK_DECAY);
+      }
+
+      const activeDots = Math.round(bars[i]);
+      const peakDot = Math.round(peaks[i]);
+      const x = i * BAR_STRIDE;
+
+      // Render vertical column of 1px discrete dots separated by 1px blank space
+      for (let d = 0; d < activeDots; d++) {
+        // d=0 is bottom dot
+        const y = height - (d + 1) * DOT_PITCH;
+        if (y < 0) break;
+        ctx.fillStyle = cachedDotStyles[d] || '#07aed7';
+        ctx.fillRect(x, y, BAR_WIDTH, DOT_HEIGHT);
+      }
+
+      // Render falling peak indicator dot (bright hot pink / magenta with glow)
+      if (peakDot > 0 && peakDot < maxDots) {
+        const peakY = height - (peakDot + 1) * DOT_PITCH;
+        if (peakY >= 0) {
+          ctx.fillStyle = '#ff2a85';
+          ctx.fillRect(x, peakY, BAR_WIDTH, DOT_HEIGHT);
+        }
+      }
+    }
+  }
+
+  animate();
+})();
+</script>
+</body></html>

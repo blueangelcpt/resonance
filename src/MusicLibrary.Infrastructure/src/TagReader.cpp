@@ -259,10 +259,15 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 					}
 				}
 				if (options.retainFramePayloads) out.binary = toBytes(picture->picture());
+
+				// The ordinal is assigned here, not by pushFrame, because the
+				// picture record has to carry the same value. Calling both would
+				// count this frame twice and leave the two records disagreeing,
+				// which breaks looking a picture's bytes up by its frame ordinal.
 				assignOrdinal(out);
 				embedded.frameOrdinal = out.ordinal;
 				snapshot.pictures.push_back(std::move(embedded));
-				pushFrame(out);
+				snapshot.frames.push_back(std::move(out));
 				continue;
 			}
 
