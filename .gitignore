@@ -1,0 +1,56 @@
+# Build outputs
+build/
+build-*/
+out/
+cmake-build-*/
+install/
+_CPack_Packages/
+*.deb
+*.dmg
+*.exe
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.pdb
+*.ilk
+compile_commands.json
+CMakeUserPresets.json
+
+# Catalogue, caches, logs, personal data -- never in Git (REPO-001)
+*.mlcat
+*.mlcat-wal
+*.mlcat-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+assets/
+cache/
+logs/
+*.log
+
+# Real music must never enter the repository (REPO-001)
+music/
+Music/
+*.mp3
+*.flac
+*.m4a
+*.wav
+*.ogg
+!tests/fixtures/**/*.mp3
+
+# Secrets and credentials
+.env
+*.pem
+*.p12
+*.pfx
+secrets/
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
