@@ -1,0 +1,185 @@
+# Pull-request validation: build and test on every target, with no release
+# credentials (FRD section 16).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux x64
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build pkg-config \
+            qt6-base-dev qt6-base-dev-tools qt6-multimedia-dev libgl1-mesa-dev \
+            libtag1-dev libsqlite3-dev libjpeg-dev libpng-dev zlib1g-dev \
+            libcurl4-openssl-dev
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DML_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      # DIST-002: the application must work with no network. The suite already
+      # runs offline; this asserts the CLI starts and reports honestly.
+      - name: Offline smoke test
+        run: |
+          mkdir -p /tmp/smoke/source /tmp/smoke/data
+          ./build/src/MusicLibrary.Cli/resonance --version
+          ./build/src/MusicLibrary.Cli/resonance scan \
+            --source /tmp/smoke/source --data /tmp/smoke/data --offline --quiet
+          ./build/src/MusicLibrary.Cli/resonance diagnostics \
+            --source /tmp/smoke/source --data /tmp/smoke/data --offline
+
+      # UI-001: the desktop interface composes and paints. Offscreen, so no
+      # display server is needed on the runner.
+      - name: Desktop render smoke test
+        run: |
+          QT_QPA_PLATFORM=offscreen ./build/src/MusicLibrary.Desktop/resonance-desktop \
+            --source /tmp/smoke/source --data /tmp/smoke/data --offline \
+            --screenshot /tmp/smoke/window.png --size 1400x900
+          test -s /tmp/smoke/window.png
+
+      - name: Dependency inventory
+        run: |
+          echo "## CLI" && ldd build/src/MusicLibrary.Cli/resonance
+          echo "## Desktop" && ldd build/src/MusicLibrary.Desktop/resonance-desktop
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-render
+          path: /tmp/smoke/window.png
+          if-no-files-found: warn
+
+  sanitisers:
+    name: ASan + UBSan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build pkg-config libtag1-dev libsqlite3-dev \
+            libjpeg-dev libpng-dev zlib1g-dev libcurl4-openssl-dev
+
+      # FRD section 15 requires ASan and UBSan on supported CI targets, and
+      # fuzzing the tag reader with truncated and malformed inputs. The
+      # randomised container pass in InfrastructureTests runs under both.
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DML_BUILD_DESKTOP=OFF
+          -DML_ENABLE_ASAN=ON
+          -DML_ENABLE_UBSAN=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test under sanitisers
+        env:
+          ASAN_OPTIONS: detect_leaks=1:strict_string_checks=1:detect_stack_use_after_return=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: ctest --test-dir build --output-on-failure
+
+  windows:
+    name: Windows x64
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.10.2'
+          modules: 'qtmultimedia'
+          cache: true
+
+      - uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '5b1214315250939257ef5d62ecdcbca18cf4fb1c'
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Package
+        run: cmake --build build --config Release --target package
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-installer
+          path: build/*.exe
+          if-no-files-found: warn
+
+  macos:
+    name: macOS ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-14
+          - arch: x86_64
+            runner: macos-13
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install ninja taglib sqlite jpeg-turbo libpng curl qt@6
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH=$(brew --prefix qt@6)
+          -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }}
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package
+        run: cmake --build build --target package
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}-dmg
+          path: build/*.dmg
+          if-no-files-found: warn
