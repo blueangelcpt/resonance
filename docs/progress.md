@@ -1,6 +1,6 @@
 # Progress log
 
-Project: Resonance (`blueangelcpt/mp3-tool`)
+Project: Resonance (`blueangelcpt/resonance`)
 Host: Ubuntu resolute, x86_64, GCC 15.2.0, CMake 4.2.3, Ninja 1.13.2, Qt 6.10.2,
 TagLib 2.2.1, SQLite 3.46.1.
 Last updated: 2026-09-13.

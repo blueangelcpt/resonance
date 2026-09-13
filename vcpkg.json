@@ -3,7 +3,7 @@
   "name": "resonance",
   "version": "0.1.0",
   "description": "MP3 library catalogue, artwork, BPM, lyrics, privacy and gain cleaning, safe organisation, and playback",
-  "homepage": "https://github.com/blueangelcpt/mp3-tool",
+  "homepage": "https://github.com/blueangelcpt/resonance",
   "license": "GPL-3.0-or-later",
   "builtin-baseline": "c76c06644034521fb761a39f8f52d8e87d1103d5",
   "dependencies": [

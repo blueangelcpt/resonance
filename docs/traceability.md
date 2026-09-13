@@ -1,6 +1,6 @@
 # Requirements traceability matrix
 
-Project: `blueangelcpt/mp3-tool` — Resonance
+Project: `blueangelcpt/resonance` (Resonance)
 Baseline: `docs/requirements.md` (FRD v1.3, 11 September 2026), section 15 execution contract.
 Last updated: 2026-09-13, after the Resonance interface port.
 
@@ -52,7 +52,7 @@ All three suites pass: `ctest` reports 3/3, 292 assertions, 0 failures.
 | DIST-001 | All four platform artifacts from one versioned source. | `IN_PROGRESS` | One CMake project; CPack configured for NSIS, DragNDrop and DEB; CI workflow builds all four. **Only the Linux x64 build has been produced and run on this host.** | `[build]` Linux x64 CLI and desktop binaries. Windows, macOS ARM64 and macOS x64: recipes written, artifacts not built or installed here. |
 | DIST-002 | No .NET/C++/CLI dependency; no SDK, Python or Node needed. | `VERIFIED` | Native C++20 throughout; no managed runtime, no interpreter, no helper process. | `[build]` `ldd` inventory in `native/DEPENDENCIES.md`; offline mode exercised by the whole test suite. |
 | DIST-003 | Install/upgrade/uninstall leave music intact; uninstall preserves the catalogue. | `IMPLEMENTED` | The catalogue lives in the OS per-user data directory, never under the install prefix; `Library::open` refuses a data directory inside a source root. | `[preserve]` catalogue-inside-source refusal. Installer lifecycle tests with sentinel data: not executed. |
-| REPO-001 | Source, requirements, ADRs, tests and build recipes in one repository. | `VERIFIED` | `blueangelcpt/mp3-tool` with the FRD's own directory structure; music, catalogues and secrets excluded by `.gitignore`. | Repository review. |
+| REPO-001 | Source, requirements, ADRs, tests and build recipes in one repository. | `VERIFIED` | `blueangelcpt/resonance` with the FRD's own directory structure; music, catalogues and secrets excluded by `.gitignore`. | Repository review. |
 | REL-001 | Matching versions, checksums, dependency notices, explicit test/signing status. | `IN_PROGRESS` | One version normalised across binaries, bundle metadata and packages; release workflow attaches SHA-256 sums and a dependency report. **No release has been tagged and nothing is signed.** | Signing credentials unavailable; recorded in `docs/open-questions.md`. |
 
 ## B. Derived functional requirements

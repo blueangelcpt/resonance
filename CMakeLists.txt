@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.22)
 project(Resonance
 	VERSION 0.1.0
 	DESCRIPTION "Resonance: MP3 library catalogue, artwork, BPM, lyrics, privacy and gain cleaning, and safe organisation"
-	HOMEPAGE_URL "https://github.com/blueangelcpt/mp3-tool"
+	HOMEPAGE_URL "https://github.com/blueangelcpt/resonance"
 	LANGUAGES CXX
 )
 
