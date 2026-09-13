@@ -103,6 +103,31 @@ bool looksLikeAccountId(std::string_view s) {
 	return std::all_of(s.begin(), s.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
 }
 
+/// Custom text fields with a documented public meaning.
+///
+/// Without this list the numeric-identifier heuristic flags every `CATALOG`,
+/// `DISCID` and `BARCODE` value as account-shaped, which would bury the real
+/// findings under hundreds of false positives. These are release identifiers
+/// published on the sleeve, not personal data.
+bool isKnownPublicTextField(std::string_view description) {
+	static constexpr std::array<std::string_view, 30> kPublicFields = {
+		"CATALOG", "CATALOGNUMBER", "CATALOGUENUMBER", "DISCID", "BARCODE", "ISRC",
+		"ASIN", "LABEL", "MEDIA", "SCRIPT", "RELEASECOUNTRY", "RELEASETYPE",
+		"RELEASESTATUS", "ORIGINALYEAR", "ORIGINALDATE", "ARTISTSORT", "ALBUMARTISTSORT",
+		"CRC-32", "CRC32", "ACCURATERIPRESULT", "ACCURATERIPDISCID", "SOURCE",
+		"ENCODER", "ENCODEDBY", "COMPILATION", "TOTALTRACKS", "TOTALDISCS",
+		"MUSICBRAINZ ALBUM ID", "MUSICBRAINZ ARTIST ID", "MUSICBRAINZ TRACK ID",
+	};
+	for (auto field : kPublicFields) {
+		if (text::equalsNoCase(description, field)) return true;
+	}
+	// Every MusicBrainz and AcoustID field is a public identifier.
+	if (text::startsWithNoCase(description, "MUSICBRAINZ")) return true;
+	if (text::startsWithNoCase(description, "ACOUSTID")) return true;
+	if (text::startsWithNoCase(description, "REPLAYGAIN")) return true;
+	return false;
+}
+
 std::string redact(std::string_view value, bool sensitive) {
 	if (!sensitive) return std::string(value);
 	if (value.size() <= 4) return "[redacted]";
@@ -262,6 +287,11 @@ PrivacyPreview PrivacyPolicy::evaluate(const TagSnapshot& snapshot) const {
 				// Owned by the gain policy.
 				continue;
 			}
+			if (isKnownPublicTextField(f.description)) {
+				push(preview, makeDecision(f, FrameAction::Keep, "txxx.preserve.public_field",
+					"\"" + f.description + "\" is a documented public release field", false));
+				continue;
+			}
 			if (m_options.scanFreeTextForPersonalData) {
 				const std::string finding = detectPersonalData(f.value);
 				if (!finding.empty()) {
@@ -276,6 +306,7 @@ PrivacyPreview PrivacyPolicy::evaluate(const TagSnapshot& snapshot) const {
 		// --- APEv2 keys carrying purchase data --------------------------------
 		if (f.container == TagContainer::Apev2) {
 			if (GainPolicy::isMp3GainUndoField(f.id) || GainPolicy::isReplayGainField(f.id)) continue;
+			if (isKnownPublicTextField(f.id)) continue;
 			if (m_options.scanFreeTextForPersonalData) {
 				const std::string finding = detectPersonalData(f.value);
 				if (!finding.empty()) {

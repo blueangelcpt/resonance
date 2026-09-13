@@ -174,18 +174,17 @@ struct PaddingOptions {
 	std::size_t rewriteThresholdBytes = 16384;
 };
 
+/// Size change, decomposed by cause.
+///
+/// FN-OPT-02 requires enrichment growth reported separately from optimisation
+/// savings. Padding is a third cause: retaining a padding budget can make a file
+/// larger without anything having been added to it, and reporting that as
+/// negative "savings" would be misleading.
 struct SizeAccounting {
-	std::int64_t optimisationSavings = 0;   ///< Bytes removed by compaction and policy.
+	std::int64_t optimisationSavings = 0;   ///< Bytes removed by policy and compaction.
 	std::int64_t enrichmentGrowth = 0;      ///< Bytes added by artwork and lyrics.
-	std::int64_t netDelta = 0;
-
-	/// FN-OPT-02 requires these reported separately, never netted into one number
-	/// that hides growth behind savings.
-	void add(std::int64_t delta, bool isEnrichment) {
-		if (isEnrichment) enrichmentGrowth += delta;
-		else optimisationSavings -= delta;
-		netDelta += delta;
-	}
+	std::int64_t paddingDelta = 0;          ///< Change in reserved padding.
+	std::int64_t netDelta = 0;              ///< Actual file size change.
 };
 
 } // namespace ml
