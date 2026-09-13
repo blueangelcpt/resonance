@@ -84,6 +84,26 @@ CREATE TABLE files (
 		CHECK (read_status IN ('ok', 'unreadable', 'truncated', 'malformed', 'unsupported')),
 	read_error          TEXT,
 
+	-- Denormalised display fields, copied from the latest observed snapshot.
+	-- The authoritative values remain in tag_frames; these exist so the track
+	-- table can page 70,000 rows without joining four tables per row (UI-001).
+	display_title           TEXT    NOT NULL DEFAULT '',
+	display_artist          TEXT    NOT NULL DEFAULT '',
+	display_album_artist    TEXT    NOT NULL DEFAULT '',
+	display_album           TEXT    NOT NULL DEFAULT '',
+	display_genre           TEXT    NOT NULL DEFAULT '',
+	display_date            TEXT    NOT NULL DEFAULT '',
+	display_track           INTEGER,
+	display_disc            INTEGER,
+	display_bpm             REAL,
+	has_artwork             INTEGER NOT NULL DEFAULT 0,
+	artwork_width           INTEGER NOT NULL DEFAULT 0,
+	artwork_height          INTEGER NOT NULL DEFAULT 0,
+	has_lyrics              INTEGER NOT NULL DEFAULT 0,
+	has_gain_fields         INTEGER NOT NULL DEFAULT 0,
+	has_privacy_findings    INTEGER NOT NULL DEFAULT 0,
+	primary_container       TEXT    NOT NULL DEFAULT '',
+
 	UNIQUE (root_id, relative_path)
 );
 CREATE INDEX idx_files_directory ON files(root_id, relative_directory);
@@ -91,6 +111,12 @@ CREATE INDEX idx_files_content_hash ON files(content_sha256);
 CREATE INDEX idx_files_audio_hash ON files(audio_sha256);
 CREATE INDEX idx_files_identity ON files(device_id, inode);
 CREATE INDEX idx_files_read_status ON files(read_status) WHERE read_status <> 'ok';
+-- Indexes backing the track table's sort order and its filter chips (FN-UI-02).
+CREATE INDEX idx_files_browse ON files(display_album_artist, display_album, display_disc, display_track);
+CREATE INDEX idx_files_artwork ON files(has_artwork);
+CREATE INDEX idx_files_lyrics ON files(has_lyrics);
+CREATE INDEX idx_files_gain ON files(has_gain_fields);
+CREATE INDEX idx_files_privacy ON files(has_privacy_findings);
 
 -- ===========================================================================
 -- Observed tag state. Every discovered field is retained, including fields
@@ -471,9 +497,11 @@ CREATE TABLE settings (
 );
 
 -- Full-text search over the fields the track table filters on.
+--
+-- A regular (not contentless) FTS5 table: the index is rebuilt per file on
+-- rescan, and a contentless table cannot be updated in place.
 CREATE VIRTUAL TABLE file_search USING fts5(
 	title, artist, album_artist, album, relative_path,
-	content = '',
 	tokenize = 'unicode61 remove_diacritics 2'
 );
 )SQL";

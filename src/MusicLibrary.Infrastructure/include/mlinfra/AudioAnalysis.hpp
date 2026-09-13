@@ -84,13 +84,22 @@ struct TempoAnalyzerOptions {
 	double preferredBpm = 120.0;
 	/// Width of that prior, in octaves. Larger values weaken the preference.
 	/// 0 disables it, which restores the raw peak pick.
-	double tempoPriorSigmaOctaves = 0.85;
-	/// Weight given to the candidate period's 2x and 3x harmonics. Corroboration
-	/// from harmonics helps a true beat period, but it also rewards spurious
-	/// peaks at 1.5x the beat when the material has strong half-beat onsets.
-	/// Tuned by measurement; see docs/adr/0003-tempo-engine.md.
-	double harmonic2Weight = 0.5;
-	double harmonic3Weight = 0.25;
+	///
+	/// Chosen by sweeping sigma against 120 tracks carrying an existing BPM tag:
+	/// 0 gave 38% agreement, 0.5 gave 83%, 0.6 gave 82%, 1.0 gave 77% and 1.3
+	/// gave 67%. 0.6 is taken over the marginally better 0.5 because it is the
+	/// wider prior -- it forces a genuinely slow or fast track less hard -- and it
+	/// had the lower octave-error rate. See docs/adr/0003-tempo-engine.md.
+	double tempoPriorSigmaOctaves = 0.6;
+	/// Weight given to the candidate period's 2x and 3x harmonics.
+	///
+	/// Zero by default. Harmonic corroboration sounds principled but measured
+	/// worse at every sigma: it also rewards a spurious peak at 1.5x the beat,
+	/// which is where the residual errors on this collection came from. At
+	/// sigma 0.6 the same corpus scored 82% with no harmonics and 75% with
+	/// weights 0.5/0.25.
+	double harmonic2Weight = 0.0;
+	double harmonic3Weight = 0.0;
 };
 
 /// Onset-detection and tempo estimation.
