@@ -16,4 +16,7 @@ endfunction()
 ml_add_test(CorePolicyTests CorePolicyTests.cpp)
 ml_add_test(InfrastructureTests InfrastructureTests.cpp)
 ml_add_test(PreservationTests PreservationTests.cpp)
+
+# Directly exercises TagLib frame types to build preservation fixtures, so it
+# needs TagLib's own headers rather than just what Infrastructure re-exports.
 target_link_libraries(PreservationTests PRIVATE Resonance::TagLib)

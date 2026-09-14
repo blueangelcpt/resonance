@@ -127,7 +127,11 @@ std::optional<FileIdentity> PathGuard::identityOf(const fs::path& path) {
 	id.inode = static_cast<std::uint64_t>(st.st_ino);
 	id.sizeBytes = static_cast<std::int64_t>(st.st_size);
 	id.modifiedUnixMs = static_cast<std::int64_t>(st.st_mtime) * 1000
+#if defined(__APPLE__)
+		+ static_cast<std::int64_t>(st.st_mtimespec.tv_nsec / 1000000);
+#else
 		+ static_cast<std::int64_t>(st.st_mtim.tv_nsec / 1000000);
+#endif
 #endif
 	return id;
 }
