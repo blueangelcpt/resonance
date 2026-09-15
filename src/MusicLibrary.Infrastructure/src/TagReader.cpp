@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <set>
 
 namespace fs = std::filesystem;
@@ -186,7 +187,14 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 	// --- Pass 2: TagLib for decoded semantics -------------------------------
 	// readAudioProperties is false: the container parser already measured them,
 	// and doing it twice on 3000 files is wasted I/O.
-	TagLib::MPEG::File file(path.string().c_str(), false);
+	//
+	// Held through a unique_ptr rather than by value so it can be closed
+	// (via reset(), below) once its semantics are extracted and before the
+	// hashing pass reopens the same path: on Windows, TagLib's file stream
+	// does not share its read handle, so a still-open TagLib::File makes the
+	// hashing pass's own open of the same file fail silently.
+	auto filePtr = std::make_unique<TagLib::MPEG::File>(path.string().c_str(), false);
+	TagLib::MPEG::File& file = *filePtr;
 	if (!file.isValid()) {
 		snapshot.readWarnings.push_back("TagLib could not open the file; only the raw inventory is available");
 	}
@@ -425,6 +433,11 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 			snapshot.primaryContainer = TagContainer::Id3v1;
 		}
 	}
+
+	// Close TagLib's handle now: nothing below touches `file`, and the
+	// hashing pass below needs to reopen this same path (see the comment
+	// where filePtr is created).
+	filePtr.reset();
 
 	// --- LAME header gain evidence ------------------------------------------
 	// Recorded as a warning so the gain policy can raise its exception without

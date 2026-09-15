@@ -177,7 +177,7 @@ CREATE TABLE tag_pictures (
 	frame_ordinal     INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX idx_tag_pictures_snapshot ON tag_pictures(snapshot_id);
-
+)SQL" R"SQL(
 -- ===========================================================================
 -- Albums
 -- ===========================================================================
@@ -343,7 +343,7 @@ CREATE TABLE lyrics_results (
 );
 CREATE INDEX idx_lyrics_file ON lyrics_results(file_id);
 CREATE INDEX idx_lyrics_state ON lyrics_results(state);
-
+)SQL" R"SQL(
 -- ===========================================================================
 -- Durable jobs (JOB-001)
 -- ===========================================================================
