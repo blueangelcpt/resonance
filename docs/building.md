@@ -129,9 +129,9 @@ xcrun stapler staple build/macos-arm64/*.dmg
 
 ```bash
 sudo apt install -y build-essential ninja-build cmake pkg-config \
-  qt6-base-dev qt6-base-dev-tools qt6-multimedia-dev libgl1-mesa-dev \
-  libtag1-dev libsqlite3-dev libjpeg-dev libpng-dev zlib1g-dev \
-  libcurl4-openssl-dev
+  qt6-base-dev qt6-base-dev-tools qt6-multimedia-dev qt6-svg-dev \
+  libgl1-mesa-dev libtag1-dev libsqlite3-dev libjpeg-dev libpng-dev \
+  zlib1g-dev libcurl4-openssl-dev
 
 cmake --preset linux-release
 cmake --build --preset linux-release

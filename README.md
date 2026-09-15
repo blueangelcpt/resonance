@@ -33,19 +33,22 @@ Requires a C++20 compiler, CMake 3.22+, and:
 
 ```bash
 sudo apt install -y build-essential ninja-build cmake pkg-config \
-  qt6-base-dev qt6-base-dev-tools qt6-multimedia-dev libgl1-mesa-dev \
-  libtag1-dev libsqlite3-dev libjpeg-dev libpng-dev zlib1g-dev \
-  libcurl4-openssl-dev
+  qt6-base-dev qt6-base-dev-tools qt6-multimedia-dev qt6-svg-dev \
+  libgl1-mesa-dev libtag1-dev libsqlite3-dev libjpeg-dev libpng-dev \
+  zlib1g-dev libcurl4-openssl-dev
 ```
 
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-ctest --test-dir build --output-on-failure
+cmake --preset linux-release
+cmake --build --preset linux-release
+ctest --preset linux-release
 ```
 
-Binaries land at `build/src/MusicLibrary.Cli/resonance` and
-`build/src/MusicLibrary.Desktop/resonance-desktop`.
+Binaries land at `build/linux-release/src/MusicLibrary.Cli/resonance` and
+`build/linux-release/src/MusicLibrary.Desktop/resonance-desktop`.
+
+`cmake --list-presets` shows the rest: `linux-debug`, `linux-sanitisers` and
+`linux-strict`, which is the warnings-as-errors configuration CI builds.
 
 The CLI links no Qt module and runs without a display server. Build it alone
 with `-DML_BUILD_DESKTOP=OFF`.

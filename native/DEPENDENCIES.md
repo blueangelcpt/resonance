@@ -63,10 +63,10 @@ dependency disappear.
 ## Reproducing this inventory
 
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-ldd build/src/MusicLibrary.Cli/resonance
-ldd build/src/MusicLibrary.Desktop/resonance-desktop
+cmake --preset linux-release
+cmake --build --preset linux-release
+ldd build/linux-release/src/MusicLibrary.Cli/resonance
+ldd build/linux-release/src/MusicLibrary.Desktop/resonance-desktop
 ```
 
 ## Pinning
