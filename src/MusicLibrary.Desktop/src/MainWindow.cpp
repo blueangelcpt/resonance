@@ -81,6 +81,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 		});
 	connect(m_player, &AudioPlayer::trackFinished, this, [this]() {
 		appendLog(QStringLiteral("Playback reached the end of the track."));
+		playNextTrack();
 	});
 
 	connect(m_runner, &TaskRunner::started, this, &MainWindow::onTaskStarted);
@@ -299,7 +300,7 @@ QWidget* MainWindow::buildWorkbenchTab() {
 		m_spectrumTelemetry->setFont(theme::monoFont(7));
 		m_spectrumTelemetry->setProperty("mlMuted", true);
 		m_spectrumTelemetry->setText(QStringLiteral(
-			"FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
+			"FFT 1024 · Hann · 480 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
 		inner->addWidget(m_spectrumTelemetry);
 	}
 	centre->addWidget(spectrumPanel);
@@ -342,6 +343,7 @@ QWidget* MainWindow::buildWorkbenchTab() {
 		m_trackTable->horizontalHeader()->setStretchLastSection(true);
 		m_trackTable->setFont(theme::monoFont(8));
 		connect(m_trackTable, &QTableView::clicked, this, &MainWindow::onTrackActivated);
+	connect(m_trackTable, &QTableView::doubleClicked, this, &MainWindow::onTrackDoubleClicked);
 		inner->addWidget(m_trackTable, 1);
 
 		m_trackCountLabel = new QLabel(QStringLiteral("No library open."), listPanel->body());
@@ -403,6 +405,37 @@ QWidget* MainWindow::buildWorkbenchTab() {
 	return page;
 }
 
+bool MainWindow::loadForPlayback(const FileRecord& record) {
+	// Only decode when the selection actually changed.
+	if (m_loadedForPlayback == record.id) return true;
+
+	std::error_code ec;
+	fs::path source;
+	for (const auto& root : m_library->guard().protectedRoots()) {
+		const fs::path candidate = root.resolvedPath / record.relativePath;
+		if (fs::exists(candidate, ec) && !ec) { source = candidate; break; }
+	}
+	if (source.empty()) {
+		statusBar()->showMessage(QStringLiteral("The source file is not reachable."), 6000);
+		return false;
+	}
+
+	QApplication::setOverrideCursor(Qt::BusyCursor);
+	auto status = m_player->load(source);
+	QApplication::restoreOverrideCursor();
+
+	if (!status) {
+		appendLog(QStringLiteral("Could not load for playback: %1")
+			.arg(qs(status.error().describe())));
+		statusBar()->showMessage(qs(status.error().message), 8000);
+		return false;
+	}
+	m_loadedForPlayback = record.id;
+	m_player->setVolume(m_player->volume());
+	appendLog(QStringLiteral("Loaded for playback: %1").arg(qs(record.relativePath)));
+	return true;
+}
+
 void MainWindow::onPlayPause() {
 	if (!m_library || !m_library->isOpen()) return;
 	if (!m_player->hasOutputDevice()) {
@@ -416,34 +449,7 @@ void MainWindow::onPlayPause() {
 	const auto record = m_trackModel->recordAt(current.row());
 	if (!record) return;
 
-	// Only decode when the selection actually changed.
-	if (!(m_loadedForPlayback == record->id)) {
-		std::error_code ec;
-		fs::path source;
-		for (const auto& root : m_library->guard().protectedRoots()) {
-			const fs::path candidate = root.resolvedPath / record->relativePath;
-			if (fs::exists(candidate, ec) && !ec) { source = candidate; break; }
-		}
-		if (source.empty()) {
-			statusBar()->showMessage(QStringLiteral("The source file is not reachable."), 6000);
-			return;
-		}
-
-		QApplication::setOverrideCursor(Qt::BusyCursor);
-		auto status = m_player->load(source);
-		QApplication::restoreOverrideCursor();
-
-		if (!status) {
-			appendLog(QStringLiteral("Could not load for playback: %1")
-				.arg(qs(status.error().describe())));
-			statusBar()->showMessage(qs(status.error().message), 8000);
-			return;
-		}
-		m_loadedForPlayback = record->id;
-		m_player->setVolume(m_player->volume());
-		appendLog(QStringLiteral("Loaded for playback: %1").arg(qs(record->relativePath)));
-	}
-
+	if (!loadForPlayback(*record)) return;
 	m_player->togglePlayPause();
 }
 
@@ -490,15 +496,15 @@ void MainWindow::onPlayerState(PlaybackState state) {
 			.arg(m_player->formatDescription()), 4000);
 		if (m_spectrumTelemetry) {
 			m_spectrumTelemetry->setText(QStringLiteral(
-				"LIVE · FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · peak hold · out %1")
+				"LIVE · FFT 1024 · Hann · log bands (width-matched) · 30 Hz–16 kHz · peak hold · out %1")
 				.arg(m_player->formatDescription()));
 		}
 	} else {
 		m_visualiserTimer->stop();
 		if (m_spectrumTelemetry) {
 			m_spectrumTelemetry->setText(state == PlaybackState::Paused
-				? QStringLiteral("LIVE (paused) · FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · peak hold")
-				: QStringLiteral("FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
+				? QStringLiteral("LIVE (paused) · FFT 1024 · Hann · log bands (width-matched) · 30 Hz–16 kHz · peak hold")
+				: QStringLiteral("FFT 1024 · Hann · 480 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
 		}
 	}
 }
@@ -559,9 +565,9 @@ void MainWindow::onAnalyseSpectrum(FileId file) {
 		return;
 	}
 
-	m_spectrum->setSpectrogram(buildSpectrogram(audio.value(), 96));
+	m_spectrum->setSpectrogram(buildSpectrogram(audio.value()));
 	m_spectrumTelemetry->setText(QStringLiteral(
-		"FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · decoded %1 at %2 Hz mono · minimp3")
+		"FFT 1024 · Hann · 480 log bands · 30 Hz–16 kHz · decoded %1 at %2 Hz mono · minimp3")
 		.arg(qs(text::formatDuration(audio.value().durationMs)))
 		.arg(audio.value().sampleRateHz));
 	appendLog(QStringLiteral("Analysed spectrum: %1").arg(qs(record.value()->relativePath)));
@@ -693,6 +699,20 @@ QWidget* MainWindow::buildLibraryTab() {
 	commandsLayout->addLayout(writeRow);
 
 	layout->addWidget(commandsGroup);
+
+	// --- Progress --------------------------------------------------------------
+	// A command started from this tab should show its progress right here, not
+	// only on the separate Jobs tab — otherwise "Scanning…" in the status bar
+	// is the only feedback, with no way to tell progress from a stall.
+	auto* progressGroup = new QGroupBox(QStringLiteral("Progress"), page);
+	auto* progressLayout = new QVBoxLayout(progressGroup);
+	m_libraryProgressLabel = new QLabel(QStringLiteral("Idle."), progressGroup);
+	progressLayout->addWidget(m_libraryProgressLabel);
+	m_libraryProgress = new QProgressBar(progressGroup);
+	m_libraryProgress->setRange(0, 100);
+	m_libraryProgress->setValue(0);
+	progressLayout->addWidget(m_libraryProgress);
+	layout->addWidget(progressGroup);
 
 	// --- Coverage ------------------------------------------------------------
 	auto* coverageGroup = new QGroupBox(QStringLiteral("Coverage"), page);
@@ -1159,34 +1179,50 @@ void MainWindow::onWriteNamingReport() {
 
 void MainWindow::onTaskStarted(const QString& title) {
 	setBusy(true);
-	m_progressLabel->setText(title + QStringLiteral("…"));
+	const QString text = title + QStringLiteral("…");
+	m_progressLabel->setText(text);
+	m_progress->setRange(0, 100);
 	m_progress->setValue(0);
+	m_libraryProgressLabel->setText(text);
+	m_libraryProgress->setRange(0, 100);
+	m_libraryProgress->setValue(0);
 	appendLog(QStringLiteral("Started: %1").arg(title));
-	statusBar()->showMessage(title + QStringLiteral("…"));
+	statusBar()->showMessage(text);
 }
 
 void MainWindow::onTaskProgress(qint64 done, qint64 total, const QString& message) {
 	if (total > 0) {
+		const int percent = static_cast<int>((done * 100) / total);
+		const QString text = QStringLiteral("%1  —  %2 of %3").arg(message).arg(done).arg(total);
 		m_progress->setRange(0, 100);
-		m_progress->setValue(static_cast<int>((done * 100) / total));
-		m_progressLabel->setText(QStringLiteral("%1  —  %2 of %3")
-			.arg(message).arg(done).arg(total));
+		m_progress->setValue(percent);
+		m_progressLabel->setText(text);
+		m_libraryProgress->setRange(0, 100);
+		m_libraryProgress->setValue(percent);
+		m_libraryProgressLabel->setText(text);
 	} else {
-		m_progress->setRange(0, 0);   // Busy indicator when the total is unknown.
+		// Busy indicator when the total is unknown.
+		m_progress->setRange(0, 0);
 		m_progressLabel->setText(message);
+		m_libraryProgress->setRange(0, 0);
+		m_libraryProgressLabel->setText(message);
 	}
 }
 
 void MainWindow::onTaskFinished(bool success, const QString& title) {
 	setBusy(false);
+	const QString text = success
+		? title + QStringLiteral(" — finished")
+		: title + QStringLiteral(" — did not complete");
 	m_progress->setRange(0, 100);
 	m_progress->setValue(success ? 100 : 0);
-	m_progressLabel->setText(success
-		? title + QStringLiteral(" — finished")
-		: title + QStringLiteral(" — did not complete"));
+	m_progressLabel->setText(text);
+	m_libraryProgress->setRange(0, 100);
+	m_libraryProgress->setValue(success ? 100 : 0);
+	m_libraryProgressLabel->setText(text);
 	appendLog(QStringLiteral("%1: %2").arg(title).arg(success
 		? QStringLiteral("finished") : QStringLiteral("did not complete")));
-	statusBar()->showMessage(m_progressLabel->text(), 8000);
+	statusBar()->showMessage(text, 8000);
 	refreshAll();
 }
 
@@ -1319,6 +1355,41 @@ void MainWindow::onTrackActivated(const QModelIndex& index) {
 	}
 
 	m_planPreview->setHtml(html);
+}
+
+void MainWindow::playNextTrack() {
+	if (!m_trackTable || !m_trackModel) return;
+
+	const QModelIndex current = m_trackTable->currentIndex();
+	const int nextRow = current.isValid() ? current.row() + 1 : 0;
+	if (nextRow >= m_trackModel->rowCount()) return;   // End of the (filtered) list.
+
+	const QModelIndex next = m_trackModel->index(nextRow, 0);
+	m_trackTable->setCurrentIndex(next);
+	// setCurrentIndex() alone emits neither clicked nor doubleClicked, so the
+	// two steps a real double-click delivers are driven explicitly: refresh
+	// the deck/inspector/plan preview, then load and play.
+	onTrackActivated(next);
+	onTrackDoubleClicked(next);
+}
+
+void MainWindow::onTrackDoubleClicked(const QModelIndex& index) {
+	if (!index.isValid() || !m_library || !m_library->isOpen()) return;
+	if (!m_player->hasOutputDevice()) {
+		statusBar()->showMessage(QStringLiteral(
+			"No audio output device is available. Every library function still works."), 8000);
+		return;
+	}
+
+	const auto record = m_trackModel->recordAt(index.row());
+	if (!record) return;
+
+	// A single click already selected this row and populated the deck and
+	// inspector (QTableView delivers clicked before doubleClicked); this just
+	// adds starting playback. Unlike play/pause, a double-click always means
+	// "play this", never "toggle", whatever the player was doing before.
+	if (!loadForPlayback(*record)) return;
+	m_player->play();
 }
 
 void MainWindow::onAlbumActivated(const QModelIndex& index) {
