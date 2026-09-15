@@ -24,6 +24,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -128,6 +129,12 @@ public:
 	Catalogue& catalogue() { return *m_catalogue; }
 	const PathGuard& guard() const { return m_guard; }
 
+	/// A read-only catalogue view backed by its own SQLite connection, safe to
+	/// query from the UI thread while a command runs on a worker thread through
+	/// catalogue() concurrently. Every read the desktop app performs outside a
+	/// running command should go through this rather than catalogue().
+	Catalogue& readCatalogue() { return *m_readCatalogue; }
+
 	/// Cancels the running operation at the next checkpoint.
 	void requestCancel() { m_cancelled.store(true, std::memory_order_relaxed); }
 	void clearCancel() { m_cancelled.store(false, std::memory_order_relaxed); }
@@ -207,6 +214,8 @@ private:
 	LibraryConfig m_config;
 	Database m_database;
 	std::unique_ptr<Catalogue> m_catalogue;
+	Database m_readDatabase;
+	std::unique_ptr<Catalogue> m_readCatalogue;
 	PathGuard m_guard;
 
 	std::unique_ptr<HttpClient> m_http;
@@ -217,6 +226,15 @@ private:
 	std::unique_ptr<AssetStore> m_assets;
 
 	std::atomic<bool> m_cancelled{false};
+
+	/// Serialises every command and review/write operation against the primary
+	/// connection (see readCatalogue() for the read-only counterpart). These
+	/// can be invoked either from the worker thread TaskRunner uses for
+	/// long-running commands or directly from the UI thread (artwork review
+	/// actions, the change-plan preview); the primary connection is opened
+	/// SQLITE_OPEN_NOMUTEX and may only ever be touched by one thread at a
+	/// time, so without this lock two such calls landing at once is a crash.
+	mutable std::mutex m_primaryMutex;
 };
 
 } // namespace ml

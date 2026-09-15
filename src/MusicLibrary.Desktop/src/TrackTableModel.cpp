@@ -46,7 +46,7 @@ void TrackTableModel::refresh() {
 	m_rowCount = 0;
 
 	if (m_library && m_library->isOpen()) {
-		auto count = m_library->catalogue().countFiles(m_filter);
+		auto count = m_library->readCatalogue().countFiles(m_filter);
 		if (count) m_rowCount = static_cast<int>(count.value());
 	}
 	endResetModel();
@@ -66,7 +66,7 @@ void TrackTableModel::ensureLoaded(int row) const {
 	const int page = row / kPageSize;
 	if (m_pages.contains(page)) return;
 
-	auto records = m_library->catalogue().queryFiles(m_filter, kPageSize,
+	auto records = m_library->readCatalogue().queryFiles(m_filter, kPageSize,
 		static_cast<std::int64_t>(page) * kPageSize);
 	if (!records) return;
 
@@ -205,7 +205,7 @@ void AlbumListModel::refresh() {
 	beginResetModel();
 	m_albums.clear();
 	if (m_library && m_library->isOpen()) {
-		auto albums = m_library->catalogue().listAlbums(m_onlyNeedingReview, 0, 0);
+		auto albums = m_library->readCatalogue().listAlbums(m_onlyNeedingReview, 0, 0);
 		if (albums) m_albums = albums.value();
 	}
 	endResetModel();

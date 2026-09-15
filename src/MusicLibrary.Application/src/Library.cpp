@@ -151,6 +151,22 @@ Status Library::open(LibraryConfig config) {
 
 	m_catalogue = std::make_unique<Catalogue>(m_database);
 
+	// A second, read-only connection to the same file (WAL keeps this safe
+	// concurrently with the writer above). Every catalogue read that can happen
+	// from the UI thread goes through this one instead, because the primary
+	// connection is opened SQLITE_OPEN_NOMUTEX: it may only ever be touched by
+	// one thread at a time, and background commands (scan, enrichment, export)
+	// run it from a worker thread while the window is still open and responding
+	// to clicks. Reading through the primary connection from the UI thread at
+	// the same time is a data race that can crash the process outright.
+	DatabaseOpenOptions readOptions;
+	readOptions.readOnly = true;
+	readOptions.createIfMissing = false;
+	auto readDatabase = Database::open(m_config.dataDirectory / "catalogue.mlcat", readOptions);
+	if (!readDatabase) return Status(readDatabase.error());
+	m_readDatabase = std::move(readDatabase.value());
+	m_readCatalogue = std::make_unique<Catalogue>(m_readDatabase);
+
 	for (const auto& root : m_guard.protectedRoots()) {
 		auto id = m_catalogue->upsertRoot(root.path, root.resolvedPath, "protected_source", root.label,
 			root.volumeIdentity, root.deviceId);
@@ -191,6 +207,7 @@ bool Library::reportProgress(const ProgressCallback& progress, std::int64_t done
 
 Result<ScanResult> Library::scan(ProgressCallback progress) {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 
 	Stopwatch stopwatch;
 	ScanResult result;
@@ -417,6 +434,7 @@ Result<ScanResult> Library::scan(ProgressCallback progress) {
 
 Result<std::int64_t> Library::resolveAlbums(ProgressCallback progress) {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 
 	TrackFilter filter;
 	filter.readStatus = "ok";
@@ -465,6 +483,7 @@ Result<std::int64_t> Library::resolveAlbums(ProgressCallback progress) {
 Result<std::int64_t> Library::createSample(const fs::path& destination, int albumCount, int trackLimit,
 	ProgressCallback progress) {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 
 	// The sample destination must be outside every protected root: the whole
 	// point is that transformation runs never touch the original collection.
@@ -550,6 +569,7 @@ Result<std::int64_t> Library::createSample(const fs::path& destination, int albu
 
 Result<std::int64_t> Library::analyseTempo(ProgressCallback progress) {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 
 	TrackFilter filter;
 	filter.readStatus = "ok";
