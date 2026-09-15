@@ -50,6 +50,7 @@ fs::path resolveSource(const PathGuard& guard, const std::string& relativePath) 
 
 Result<std::int64_t> Library::fetchArtwork(ProgressCallback progress) {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 
 	auto albums = m_catalogue->listAlbums(false, 0, 0);
 	if (!albums) return albums.error();
@@ -235,6 +236,7 @@ Result<std::int64_t> Library::fetchArtwork(ProgressCallback progress) {
 
 Result<std::int64_t> Library::fetchLyrics(ProgressCallback progress) {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 
 	TrackFilter filter;
 	filter.readStatus = "ok";
@@ -477,6 +479,7 @@ Result<FilePlan> Library::buildPlan(const FileRecord& record, CollisionDetector&
 
 Result<ChangeSet> Library::plan(ProgressCallback progress) {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 	if (m_config.outputRoot.empty()) {
 		// FN-CLI-02: every modifying command requires an output root. Planning is
 		// not modifying, but a plan without a destination cannot be executed, so
@@ -546,6 +549,7 @@ Result<ChangeSet> Library::plan(ProgressCallback progress) {
 }
 
 Result<FilePlan> Library::previewFile(FileId file) {
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 	auto record = m_catalogue->loadFile(file);
 	if (!record) return record.error();
 	if (!record.value()) return Error{ErrorCode::NotFound, "no such file in the catalogue"};
@@ -561,6 +565,7 @@ Result<FilePlan> Library::previewFile(FileId file) {
 
 Result<ExportResult> Library::exportCopies(ChangeSetId set, ProgressCallback progress) {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 	if (m_config.outputRoot.empty()) {
 		return Error{ErrorCode::InvalidArgument, "an output root is required to export copies"};
 	}
@@ -795,6 +800,7 @@ Result<ExportResult> Library::exportCopies(ChangeSetId set, ProgressCallback pro
 
 Result<std::int64_t> Library::verify(ChangeSetId set, ProgressCallback progress) {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 
 	auto statement = m_database.prepare(
 		"SELECT file_id, destination_relative, written_sha256, written_audio_sha256, "
@@ -845,6 +851,7 @@ Result<std::int64_t> Library::verify(ChangeSetId set, ProgressCallback progress)
 
 Result<std::int64_t> Library::recover(ChangeSetId set, ProgressCallback progress) {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 
 	auto incomplete = m_catalogue->incompleteOperations(set);
 	if (!incomplete) return incomplete.error();
@@ -913,14 +920,14 @@ Result<std::int64_t> Library::recover(ChangeSetId set, ProgressCallback progress
 // ---------------------------------------------------------------------------
 
 Result<CoverageReport> Library::coverage() const {
-	if (!m_catalogue) return Error{ErrorCode::Internal, "the library is not open"};
-	return m_catalogue->coverageReport();
+	if (!m_readCatalogue) return Error{ErrorCode::Internal, "the library is not open"};
+	return m_readCatalogue->coverageReport();
 }
 
 Result<NamingConformity> Library::namingReport() const {
-	if (!m_catalogue) return Error{ErrorCode::Internal, "the library is not open"};
+	if (!m_readCatalogue) return Error{ErrorCode::Internal, "the library is not open"};
 	const NamingTemplate naming(m_config.naming);
-	return m_catalogue->namingConformity(naming);
+	return m_readCatalogue->namingConformity(naming);
 }
 
 Status Library::writeNamingConventionReport(const fs::path& destination) const {
@@ -986,6 +993,7 @@ Status Library::writeNamingConventionReport(const fs::path& destination) const {
 
 Result<AlbumReview> Library::reviewAlbum(AlbumId albumId) {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 
 	auto album = m_catalogue->loadAlbum(albumId);
 	if (!album) return album.error();
@@ -1019,6 +1027,7 @@ Result<AlbumReview> Library::reviewAlbum(AlbumId albumId) {
 }
 
 Status Library::lockArtwork(AlbumId album, ArtworkId asset, std::string_view note) {
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 	if (auto status = m_catalogue->setArtworkSelection(asset, "locked",
 			"locked by the user" + (note.empty() ? std::string() : ": " + std::string(note)));
 		!status) {
@@ -1031,6 +1040,7 @@ Status Library::lockArtwork(AlbumId album, ArtworkId asset, std::string_view not
 }
 
 Status Library::rejectArtwork(AlbumId album, ArtworkId asset, std::string_view note) {
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 	if (auto status = m_catalogue->setArtworkSelection(asset, "rejected",
 			"rejected by the user" + (note.empty() ? std::string() : ": " + std::string(note)));
 		!status) {
@@ -1041,6 +1051,7 @@ Status Library::rejectArtwork(AlbumId album, ArtworkId asset, std::string_view n
 }
 
 Status Library::importArtworkFile(AlbumId album, const fs::path& path) {
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 	LocalArtworkProvider local;
 	if (auto status = local.addImportedFile(path); !status) return status;
 
@@ -1102,6 +1113,7 @@ Status Library::importArtworkFile(AlbumId album, const fs::path& path) {
 
 Result<Library::Diagnostics> Library::diagnostics() {
 	if (!isOpen()) return Error{ErrorCode::Internal, "the library is not open"};
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 
 	Diagnostics d;
 	d.catalogueJournalMode = m_database.journalMode();
@@ -1129,6 +1141,7 @@ Result<Library::Diagnostics> Library::diagnostics() {
 
 Status Library::backupCatalogue(const fs::path& destination) {
 	if (!isOpen()) return Status(Error{ErrorCode::Internal, "the library is not open"});
+	std::lock_guard<std::mutex> lock(m_primaryMutex);
 	return m_database.backupTo(destination);
 }
 

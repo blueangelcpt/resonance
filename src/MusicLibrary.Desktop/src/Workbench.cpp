@@ -179,7 +179,7 @@ void LibraryExplorer::refresh() {
 
 	TrackFilter all;
 	const auto count = [&](TrackFilter filter) {
-		auto result = m_library->catalogue().countFiles(filter);
+		auto result = m_library->readCatalogue().countFiles(filter);
 		return result.ok() ? result.value() : 0;
 	};
 
@@ -229,9 +229,9 @@ void LibraryExplorer::refresh() {
 	}
 
 	// --- Albums -------------------------------------------------------------
-	auto albums = m_library->catalogue().listAlbums(false, 400, 0);
-	auto albumCount = m_library->catalogue().countAlbums(false);
-	auto reviewCount = m_library->catalogue().countAlbums(true);
+	auto albums = m_library->readCatalogue().listAlbums(false, 400, 0);
+	auto albumCount = m_library->readCatalogue().countAlbums(false);
+	auto reviewCount = m_library->readCatalogue().countAlbums(true);
 
 	auto* albumsNode = addNode(root, QStringLiteral("Albums"),
 		QString::number(albumCount.ok() ? albumCount.value() : 0), theme::kNeonCyan);
@@ -794,7 +794,7 @@ void InspectorPanel::resizeEvent(QResizeEvent* event) {
 void InspectorPanel::showFile(FileId file) {
 	if (!m_library || !m_library->isOpen()) return;
 
-	auto record = m_library->catalogue().loadFile(file);
+	auto record = m_library->readCatalogue().loadFile(file);
 	if (!record || !record.value()) {
 		clear();
 		return;
@@ -812,7 +812,7 @@ void InspectorPanel::showFile(FileId file) {
 			.arg(qs(plan.error().describe()).toHtmlEscaped()));
 	}
 
-	auto snapshot = m_library->catalogue().latestSnapshot(file);
+	auto snapshot = m_library->readCatalogue().latestSnapshot(file);
 	if (snapshot && snapshot.value()) {
 		populateMetadata(*snapshot.value(), *record.value());
 		populateLyrics(file, *snapshot.value());
@@ -981,7 +981,7 @@ void InspectorPanel::populateMetadata(const TagSnapshot& snapshot, const FileRec
 void InspectorPanel::populateLyrics(FileId file, const TagSnapshot& snapshot) {
 	QString html = QStringLiteral("<div>");
 
-	auto stored = m_library->catalogue().loadLyrics(file);
+	auto stored = m_library->readCatalogue().loadLyrics(file);
 	if (stored && stored.value()) {
 		const LyricsDecision& decision = *stored.value();
 		html += QStringLiteral("<p>%1 &nbsp; %2</p>")

@@ -121,17 +121,49 @@ private:
 	// Live path.
 	bool m_liveMode = false;
 	int m_liveSampleRate = 0;
-	std::vector<float> m_window;      ///< Hann, sized to the analysis window.
+	/// A mild raised-cosine taper over the 576-sample analysis window (the
+	/// reference analyser's own input size), sized once and independent of
+	/// band count or rate. Not a Hann window: see ensureEnvelope()'s comment.
+	std::vector<float> m_envelope;
+	/// Per-bin boost curve compensating for real audio's naturally bass-heavy
+	/// energy distribution, so the display doesn't read as all-bass. Rebuilt
+	/// alongside the band edges, since its length is the raw bin count.
+	std::vector<float> m_equalize;
 	std::vector<std::size_t> m_bandEdges;
 	int m_bandEdgeRate = 0;           ///< Rate the edges were built for.
 	int m_bandEdgeCount = 0;          ///< Band count the edges were built for.
+	/// The zero-padded transform size backing m_equalize/m_bandEdges — grows
+	/// with band count (see rebuildBands), so the FFT working buffers below
+	/// are resized to match rather than fixed at compile time.
+	std::size_t m_liveFftSize = 0;
+	std::vector<float> m_fftReal;
+	std::vector<float> m_fftImag;
+	/// A slow-attack... fast-attack, slow-release reference level that each
+	/// push's raw band magnitudes are divided by before display. The reference
+	/// analyser works in a fixed 0-255 byte range tuned for its own 8-bit
+	/// visualisation data; our decoder hands us normalised float samples in a
+	/// different absolute scale, so a literal constant would either pin every
+	/// bar at the ceiling or never light one — this self-calibrates instead,
+	/// while keeping the same fast-rise/slow-fall shape a hardware AGC has.
+	float m_autoGainCeiling = 1e-6f;
 
-	/// Rebuilds the logarithmic band edges when the output rate or the band
-	/// count (which tracks the widget's current width — see pushLiveSamples)
-	/// has changed since they were last built.
+	/// Rebuilds the logarithmic band edges, the equalize curve and the FFT
+	/// working buffers when the output rate or the band count (which tracks
+	/// the widget's current width — see pushLiveSamples) has changed since
+	/// they were last built.
 	void rebuildBands(int sampleRateHz, int bands);
-	/// Applies meter ballistics towards a freshly computed column.
-	void applyColumn(const std::vector<float>& column, float attack, float release);
+	/// Builds m_envelope once; a no-op after the first call.
+	void ensureEnvelope();
+	/// Applies the reference analyser's ballistics towards a freshly computed
+	/// column: a bar snaps up to a louder value instantly and falls at a fixed
+	/// rate per second, rather than easing towards it (see the comment on
+	/// applyColumn's definition for why).
+	void applyColumn(const std::vector<float>& column, double dtSeconds);
+
+	/// Timestamps live pushes so applyColumn's falloff is a real rate rather
+	/// than a fixed per-call step, independent of how often the timer driving
+	/// pushLiveSamples actually fires.
+	QElapsedTimer m_liveClock;
 };
 
 } // namespace ml::desktop

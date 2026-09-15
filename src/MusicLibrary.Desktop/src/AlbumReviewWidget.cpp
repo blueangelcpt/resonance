@@ -63,7 +63,12 @@ ArtworkView::ArtworkView(QString caption, QWidget* parent)
 	m_scroll->setWidget(m_imageLabel);
 	m_scroll->setWidgetResizable(true);
 	m_scroll->setAlignment(Qt::AlignCenter);
-	layout->addWidget(m_scroll, 1);
+	// Capped rather than stretched to fill the pane: three of these sit side by
+	// side, so letting each claim all available vertical space reads as three
+	// tall portrait strips instead of the roughly square covers they display.
+	m_scroll->setMaximumHeight(300);
+	layout->addWidget(m_scroll);
+	layout->addStretch(1);
 }
 
 void ArtworkView::setImage(const QImage& image, const QString& subtitle) {

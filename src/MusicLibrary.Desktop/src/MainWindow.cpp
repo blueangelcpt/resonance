@@ -8,6 +8,7 @@
 #include <QAction>
 #include <QCheckBox>
 #include <QCloseEvent>
+#include <QDir>
 #include <QFileDialog>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -65,11 +66,36 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 	// runs its own FFT, so the display is the audio you are hearing rather than
 	// a replay of an earlier analysis.
 	m_visualiserTimer = new QTimer(this);
-	m_visualiserTimer->setInterval(33);   // ~30 Hz
+	// The reference analyser (Winamp Classic) redraws once per audio buffer it
+	// receives — 576 samples at typical rates, roughly every 13 ms, ~75 Hz.
+	// 30 Hz visibly lags a drum hit behind the beat; matching its cadence more
+	// closely is what makes a kick or a vocal's pitch change read instantly
+	// instead of a frame or two late.
+	m_visualiserTimer->setInterval(15);   // ~66 Hz
 	connect(m_visualiserTimer, &QTimer::timeout, this, [this]() {
 		if (!m_spectrum || m_player->state() != PlaybackState::Playing) return;
-		m_spectrum->pushLiveSamples(m_player->visualiserBlock(2048),
-			m_player->outputSampleRate());
+		const std::vector<float> block = m_player->visualiserBlock(2048);
+		m_spectrum->pushLiveSamples(block, m_player->outputSampleRate());
+
+		// Rate diagnostics — see m_visualiserTickCount's comment.
+		++m_visualiserTickCount;
+		const float lastSample = block.empty() ? 0.0f : block.back();
+		if (!m_haveLastVisualiserSample || lastSample != m_lastVisualiserSample) {
+			++m_visualiserFreshCount;
+		}
+		m_lastVisualiserSample = lastSample;
+		m_haveLastVisualiserSample = true;
+		if (!m_visualiserRateClock.isValid()) m_visualiserRateClock.start();
+		if (m_visualiserRateClock.elapsed() >= 1000 && m_spectrumTelemetry) {
+			m_spectrumTelemetry->setText(QStringLiteral(
+				"LIVE · %1 Hz timer, %2 Hz fresh audio · 576 samp · log bands (width-matched) "
+				"· 30 Hz–16 kHz · peak hold · out %3")
+				.arg(m_visualiserTickCount).arg(m_visualiserFreshCount)
+				.arg(m_player->formatDescription()));
+			m_visualiserTickCount = 0;
+			m_visualiserFreshCount = 0;
+			m_visualiserRateClock.restart();
+		}
 	});
 
 	connect(m_player, &AudioPlayer::outputDeviceChanged, this,
@@ -300,7 +326,7 @@ QWidget* MainWindow::buildWorkbenchTab() {
 		m_spectrumTelemetry->setFont(theme::monoFont(7));
 		m_spectrumTelemetry->setProperty("mlMuted", true);
 		m_spectrumTelemetry->setText(QStringLiteral(
-			"FFT 1024 · Hann · 480 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
+			"576 samp · Hann · 480 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
 		inner->addWidget(m_spectrumTelemetry);
 	}
 	centre->addWidget(spectrumPanel);
@@ -495,16 +521,23 @@ void MainWindow::onPlayerState(PlaybackState state) {
 		statusBar()->showMessage(QStringLiteral("Playing — %1")
 			.arg(m_player->formatDescription()), 4000);
 		if (m_spectrumTelemetry) {
+			// Replaced a second or so later by the rate-diagnostic text in the
+			// timer lambda above; this is just what shows before the first
+			// measurement window closes.
 			m_spectrumTelemetry->setText(QStringLiteral(
-				"LIVE · FFT 1024 · Hann · log bands (width-matched) · 30 Hz–16 kHz · peak hold · out %1")
+				"LIVE · 576 samp · log bands (width-matched) · 30 Hz–16 kHz · peak hold · out %1")
 				.arg(m_player->formatDescription()));
 		}
+		m_visualiserTickCount = 0;
+		m_visualiserFreshCount = 0;
+		m_visualiserRateClock.invalidate();
+		m_haveLastVisualiserSample = false;
 	} else {
 		m_visualiserTimer->stop();
 		if (m_spectrumTelemetry) {
 			m_spectrumTelemetry->setText(state == PlaybackState::Paused
-				? QStringLiteral("LIVE (paused) · FFT 1024 · Hann · log bands (width-matched) · 30 Hz–16 kHz · peak hold")
-				: QStringLiteral("FFT 1024 · Hann · 480 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
+				? QStringLiteral("LIVE (paused) · 576 samp · log bands (width-matched) · 30 Hz–16 kHz · peak hold")
+				: QStringLiteral("576 samp · Hann · 480 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
 		}
 	}
 }
@@ -533,7 +566,7 @@ void MainWindow::onExplorerFilter(const TrackFilter& filter) {
 void MainWindow::onAnalyseSpectrum(FileId file) {
 	if (!m_library || !m_library->isOpen()) return;
 
-	auto record = m_library->catalogue().loadFile(file);
+	auto record = m_library->readCatalogue().loadFile(file);
 	if (!record || !record.value()) return;
 
 	// Locate the source. Reading is always permitted; writing never is.
@@ -567,7 +600,7 @@ void MainWindow::onAnalyseSpectrum(FileId file) {
 
 	m_spectrum->setSpectrogram(buildSpectrogram(audio.value()));
 	m_spectrumTelemetry->setText(QStringLiteral(
-		"FFT 1024 · Hann · 480 log bands · 30 Hz–16 kHz · decoded %1 at %2 Hz mono · minimp3")
+		"576 samp · Hann · 480 log bands · 30 Hz–16 kHz · decoded %1 at %2 Hz mono · minimp3")
 		.arg(qs(text::formatDuration(audio.value().durationMs)))
 		.arg(audio.value().sampleRateHz));
 	appendLog(QStringLiteral("Analysed spectrum: %1").arg(qs(record.value()->relativePath)));
@@ -754,7 +787,7 @@ QWidget* MainWindow::buildAlbumsTab() {
 	m_albumTable->setAlternatingRowColors(true);
 	m_albumTable->verticalHeader()->setVisible(false);
 	m_albumTable->horizontalHeader()->setStretchLastSection(true);
-	m_albumTable->setMaximumHeight(220);
+	m_albumTable->setMaximumHeight(360);
 	connect(m_albumTable, &QTableView::clicked, this, &MainWindow::onAlbumActivated);
 	splitter->addWidget(m_albumTable);
 
@@ -768,15 +801,18 @@ QWidget* MainWindow::buildAlbumsTab() {
 	});
 	splitter->addWidget(m_reviewWidget);
 	splitter->setStretchFactor(0, 1);
-	splitter->setStretchFactor(1, 4);
+	splitter->setStretchFactor(1, 2);
 	// Stretch factors alone only govern how *extra* space is distributed on a
 	// later resize; QSplitter's first layout falls back to each widget's
 	// sizeHint(), and QTableView's sizeHint asks for enough room to show its
 	// rows without scrolling. Left alone, that let the table claim most of the
 	// tab on first paint and left the review pane — candidate list, image
 	// comparison, evidence browser — squeezed into a couple of visible rows.
-	// An explicit initial split fixes that regardless of sizeHint.
-	splitter->setSizes({220, 640});
+	// An explicit initial split fixes that regardless of sizeHint. The review
+	// pane's own artwork previews are capped square (see ArtworkView) rather
+	// than stretching to fill the tab, so it no longer needs as much height as
+	// the table now gets.
+	splitter->setSizes({360, 460});
 	splitter->setCollapsible(1, false);
 
 	layout->addWidget(splitter, 1);
@@ -839,19 +875,23 @@ void MainWindow::onChooseSource() {
 	const QString path = QFileDialog::getExistingDirectory(this,
 		QStringLiteral("Choose your music folder (it will never be written to)"),
 		m_sourceEdit->text());
-	if (!path.isEmpty()) m_sourceEdit->setText(path);
+	// Qt's dialogs always return forward slashes, even on Windows (its own
+	// internal convention); std::filesystem::path accepts either separator
+	// there, so this is display-only, but showing "E:/Music" to a Windows user
+	// reads as broken. QDir::toNativeSeparators fixes only the display.
+	if (!path.isEmpty()) m_sourceEdit->setText(QDir::toNativeSeparators(path));
 }
 
 void MainWindow::onChooseOutput() {
 	const QString path = QFileDialog::getExistingDirectory(this,
 		QStringLiteral("Choose where organised copies are written"), m_outputEdit->text());
-	if (!path.isEmpty()) m_outputEdit->setText(path);
+	if (!path.isEmpty()) m_outputEdit->setText(QDir::toNativeSeparators(path));
 }
 
 void MainWindow::onChooseData() {
 	const QString path = QFileDialog::getExistingDirectory(this,
 		QStringLiteral("Choose where the catalogue is kept"), m_dataEdit->text());
-	if (!path.isEmpty()) m_dataEdit->setText(path);
+	if (!path.isEmpty()) m_dataEdit->setText(QDir::toNativeSeparators(path));
 }
 
 void MainWindow::onOpenLibrary() {
@@ -1036,7 +1076,7 @@ void MainWindow::onExport() {
 
 	std::int64_t setId = m_lastChangeSet;
 	if (setId == 0) {
-		auto latest = m_library->catalogue().latestChangeSet();
+		auto latest = m_library->readCatalogue().latestChangeSet();
 		if (latest && latest.value()) setId = latest.value()->value;
 	}
 	if (setId == 0) {
@@ -1079,7 +1119,7 @@ void MainWindow::onVerify() {
 
 	std::int64_t setId = m_lastChangeSet;
 	if (setId == 0) {
-		auto latest = m_library->catalogue().latestChangeSet();
+		auto latest = m_library->readCatalogue().latestChangeSet();
 		if (latest && latest.value()) setId = latest.value()->value;
 	}
 	if (setId == 0) return;
@@ -1106,7 +1146,7 @@ void MainWindow::onResume() {
 
 	std::int64_t setId = m_lastChangeSet;
 	if (setId == 0) {
-		auto latest = m_library->catalogue().latestChangeSet();
+		auto latest = m_library->readCatalogue().latestChangeSet();
 		if (latest && latest.value()) setId = latest.value()->value;
 	}
 	if (setId == 0) return;
@@ -1188,9 +1228,18 @@ void MainWindow::onTaskStarted(const QString& title) {
 	m_libraryProgress->setValue(0);
 	appendLog(QStringLiteral("Started: %1").arg(title));
 	statusBar()->showMessage(text);
+	m_coverageRefreshClock.start();
 }
 
 void MainWindow::onTaskProgress(qint64 done, qint64 total, const QString& message) {
+	// Coverage reads through Library::coverage()'s own read-only connection, so
+	// this is safe to run while the command driving this progress update is
+	// still writing through the primary one. Throttled: a full recompute on
+	// every tick would slow a fast scan down for no visible benefit.
+	if (!m_coverageRefreshClock.isValid() || m_coverageRefreshClock.elapsed() >= 750) {
+		onRefreshCoverage();
+		m_coverageRefreshClock.restart();
+	}
 	if (total > 0) {
 		const int percent = static_cast<int>((done * 100) / total);
 		const QString text = QStringLiteral("%1  —  %2 of %3").arg(message).arg(done).arg(total);

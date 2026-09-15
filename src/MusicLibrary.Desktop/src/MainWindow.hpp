@@ -15,6 +15,7 @@
 #include "TrackTableModel.hpp"
 #include "mlapp/Library.hpp"
 
+#include <QElapsedTimer>
 #include <QMainWindow>
 #include <QTimer>
 
@@ -146,6 +147,23 @@ private:
 	/// right where a command was started, not only on a different tab.
 	QProgressBar* m_libraryProgress = nullptr;
 	QLabel* m_libraryProgressLabel = nullptr;
+	/// Throttles Coverage recomputation during a running command so it updates
+	/// live without re-running its full set of queries on every progress tick.
+	QElapsedTimer m_coverageRefreshClock;
+
+	// Live-analyser rate diagnostics: how often the visualiser timer actually
+	// fires versus how often the audio position it reads has genuinely moved
+	// since the last tick, refreshed into the telemetry strip roughly once a
+	// second. Added because "update() is being called at 66 Hz" and "the
+	// display is visibly changing 66 times a second" turned out to be two
+	// different claims — the feed's playhead advanced only a few times a
+	// second on top of a correctly-firing timer, and nothing short of
+	// counting both separately would have shown that.
+	QElapsedTimer m_visualiserRateClock;
+	int m_visualiserTickCount = 0;
+	int m_visualiserFreshCount = 0;
+	float m_lastVisualiserSample = 0.0f;
+	bool m_haveLastVisualiserSample = false;
 
 	// Header strip
 	QLabel* m_headerTitle = nullptr;

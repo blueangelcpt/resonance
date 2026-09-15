@@ -241,11 +241,14 @@ bool PcmFeed::atEnd() const {
 }
 
 std::vector<float> PcmFeed::visualiserBlock(std::size_t frames) const {
+	return visualiserBlockAtFrame(currentFrame(), frames);
+}
+
+std::vector<float> PcmFeed::visualiserBlockAtFrame(std::int64_t atFrame, std::size_t frames) const {
 	std::lock_guard<std::mutex> lock(m_mutex);
 	if (!m_audio || m_audio->mono.empty() || frames == 0) return {};
 
-	// The block ending at the playhead: what has just been handed to the device.
-	const std::int64_t end = std::clamp<std::int64_t>(m_frame, 0,
+	const std::int64_t end = std::clamp<std::int64_t>(atFrame, 0,
 		static_cast<std::int64_t>(m_audio->mono.size()));
 	const std::int64_t begin = std::max<std::int64_t>(0,
 		end - static_cast<std::int64_t>(frames));
@@ -407,11 +410,16 @@ void AudioPlayer::play() {
 	if (!m_sink && !createSink()) return;
 
 	if (m_state == PlaybackState::Paused) {
+		// m_visualiserBaseFrame already holds the position pause() froze it at;
+		// just resume the clock counting forward from here.
 		m_sink->resume();
+		m_visualiserClock.restart();
 	} else {
 		if (!m_feed->isOpen()) m_feed->open(QIODevice::ReadOnly);
 		// Restart from the beginning once the previous run reached the end.
 		if (m_feed->atEnd()) m_feed->seekToFrame(0);
+		m_visualiserBaseFrame = m_feed->currentFrame();
+		m_visualiserClock.restart();
 		m_sink->start(m_feed);
 	}
 
@@ -422,6 +430,11 @@ void AudioPlayer::play() {
 
 void AudioPlayer::pause() {
 	if (m_state != PlaybackState::Playing || !m_sink) return;
+	// Freeze the visualiser's position estimate before the clock backing it
+	// stops meaning anything, so it resumes from exactly here rather than
+	// jumping to wherever a stale elapsed() would place it.
+	m_visualiserBaseFrame = estimatedVisualiserFrame();
+	m_visualiserClock.invalidate();
 	m_sink->suspend();
 	m_state = PlaybackState::Paused;
 	m_positionTimer.stop();
@@ -461,7 +474,15 @@ void AudioPlayer::seek(double fraction) {
 
 	if (wasPlaying && m_sink) {
 		if (!m_feed->isOpen()) m_feed->open(QIODevice::ReadOnly);
+		m_visualiserBaseFrame = frame;
+		m_visualiserClock.restart();
 		m_sink->start(m_feed);
+	} else {
+		// Not playing: freeze the estimate at the new position so a later
+		// resume (which reads m_visualiserBaseFrame, not m_sink state) starts
+		// from here rather than wherever it was before the seek.
+		m_visualiserBaseFrame = frame;
+		m_visualiserClock.invalidate();
 	}
 	emit positionChanged(positionMs(), durationMs());
 }
@@ -496,8 +517,30 @@ QString AudioPlayer::formatDescription() const {
 		.arg(QString::fromLatin1(sampleType));
 }
 
+std::int64_t AudioPlayer::estimatedVisualiserFrame() const {
+	if (!m_audio || m_audio->format.sampleRate() <= 0) return m_feed->currentFrame();
+	if (m_state != PlaybackState::Playing || !m_visualiserClock.isValid()) {
+		return std::clamp<std::int64_t>(m_visualiserBaseFrame, 0, m_audio->frameCount);
+	}
+	const double elapsedSeconds = static_cast<double>(m_visualiserClock.nsecsElapsed()) / 1e9;
+	const std::int64_t advancedFrames =
+		static_cast<std::int64_t>(elapsedSeconds * m_audio->format.sampleRate());
+	return std::clamp<std::int64_t>(m_visualiserBaseFrame + advancedFrames, 0, m_audio->frameCount);
+}
+
 std::vector<float> AudioPlayer::visualiserBlock(std::size_t frames) const {
-	return m_feed->visualiserBlock(frames);
+	// Neither m_feed->currentFrame() (accurate only to the sink's pull
+	// granularity — see PcmFeed::visualiserBlockAtFrame's comment) nor
+	// m_sink->processedUSecs() (accurate only to whatever the platform audio
+	// backend's own position reporting happens to be, which turned out not to
+	// be fine-grained enough either) update smoothly enough for a display
+	// meant to redraw dozens of times a second. The whole track is already
+	// decoded to m_audio->mono before playback starts, though, so there is no
+	// need to ask the audio subsystem where "now" is at all: a wall clock
+	// timing playback ourselves (estimatedVisualiserFrame) is exact to
+	// whatever resolution QElapsedTimer has — nanoseconds — independent of
+	// how coarsely anything downstream happens to schedule its own work.
+	return m_feed->visualiserBlockAtFrame(estimatedVisualiserFrame(), frames);
 }
 
 int AudioPlayer::outputSampleRate() const {

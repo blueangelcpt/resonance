@@ -14,6 +14,7 @@
 
 #include <QAudioFormat>
 #include <QAudioSink>
+#include <QElapsedTimer>
 #include <QIODevice>
 #include <QMediaDevices>
 #include <QObject>
@@ -96,6 +97,14 @@ public:
 
 	/// Mono samples ending at the current playhead, for the analyser.
 	std::vector<float> visualiserBlock(std::size_t frames) const;
+	/// Mono samples ending at an explicit frame, rather than the playhead
+	/// (`m_frame`) directly. `m_frame` only moves when the sink actually pulls
+	/// from this device via readData(), which — with a buffer sized for
+	/// scheduling headroom rather than visual smoothness — can be a handful of
+	/// times a second, not every call. AudioPlayer::visualiserBlock() derives a
+	/// far more finely grained position from the sink's own processed-time
+	/// clock and passes it in here instead.
+	std::vector<float> visualiserBlockAtFrame(std::int64_t atFrame, std::size_t frames) const;
 
 protected:
 	qint64 readData(char* data, qint64 maxSize) override;
@@ -164,6 +173,19 @@ private:
 	std::shared_ptr<const DecodedTrack> m_track;
 	std::shared_ptr<const PreparedAudio> m_audio;
 	QTimer m_positionTimer;
+	/// Visualiser position, tracked independently of both the feed's playhead
+	/// (m_frame — only accurate to the sink's pull granularity) and the
+	/// sink's own processedUSecs() (only as fine-grained as the platform
+	/// backend's own position reporting, which turned out not to be fine
+	/// enough either). The whole track is already decoded to m_audio->mono
+	/// before playback starts, so there is no need to ask anything for "where
+	/// are we": m_visualiserBaseFrame plus wall-clock time elapsed on
+	/// m_visualiserClock since it was last (re)started is the position,
+	/// computed by estimatedVisualiserFrame() and independent of audio
+	/// subsystem scheduling entirely.
+	std::int64_t m_visualiserBaseFrame = 0;
+	QElapsedTimer m_visualiserClock;
+	std::int64_t estimatedVisualiserFrame() const;
 	PlaybackState m_state = PlaybackState::Stopped;
 	double m_volume = 0.85;
 	bool m_hasDevice = false;
