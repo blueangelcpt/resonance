@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "mlinfra/PathGuard.hpp"
+#include "mlcore/Text.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -64,7 +65,7 @@ Result<fs::path> PathGuard::resolveAsFarAsPossible(const fs::path& path) {
 	std::error_code ec;
 	fs::path absolute = path.is_absolute() ? path : fs::absolute(path, ec);
 	if (ec) {
-		return Error{ErrorCode::IoError, "cannot make absolute: " + path.string() + ": " + ec.message()};
+		return Error{ErrorCode::IoError, "cannot make absolute: " + text::pathToUtf8(path) + ": " + ec.message()};
 	}
 	absolute = absolute.lexically_normal();
 
@@ -80,7 +81,7 @@ Result<fs::path> PathGuard::resolveAsFarAsPossible(const fs::path& path) {
 		const fs::path parent = existing.parent_path();
 		if (parent == existing) {
 			// Reached the root without finding anything that exists.
-			return Error{ErrorCode::NotFound, "no existing ancestor for " + path.string()};
+			return Error{ErrorCode::NotFound, "no existing ancestor for " + text::pathToUtf8(path)};
 		}
 		trailing.push_back(existing.filename());
 		existing = parent;
@@ -89,7 +90,7 @@ Result<fs::path> PathGuard::resolveAsFarAsPossible(const fs::path& path) {
 	ec.clear();
 	fs::path resolved = fs::canonical(existing, ec);
 	if (ec) {
-		return Error{ErrorCode::IoError, "cannot resolve " + existing.string() + ": " + ec.message()};
+		return Error{ErrorCode::IoError, "cannot resolve " + text::pathToUtf8(existing) + ": " + ec.message()};
 	}
 
 	for (auto it = trailing.rbegin(); it != trailing.rend(); ++it) {
@@ -163,10 +164,11 @@ Status PathGuard::addProtectedRoot(const fs::path& path, std::string label) {
 
 	std::error_code ec;
 	if (!fs::exists(resolved.value(), ec) || ec) {
-		return Status(Error{ErrorCode::NotFound, "protected root does not exist: " + path.string()});
+		return Status(Error{ErrorCode::NotFound, "protected root does not exist: " + text::pathToUtf8(path)});
 	}
 	if (!fs::is_directory(resolved.value(), ec) || ec) {
-		return Status(Error{ErrorCode::InvalidArgument, "protected root is not a directory: " + path.string()});
+		return Status(Error{ErrorCode::InvalidArgument,
+			"protected root is not a directory: " + text::pathToUtf8(path)});
 	}
 
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -176,7 +178,7 @@ Status PathGuard::addProtectedRoot(const fs::path& path, std::string label) {
 	for (const auto& output : m_outputRoots) {
 		if (isLexicallyInside(output, resolved.value())) {
 			return Status(Error{ErrorCode::ProtectedRootViolation,
-				"output root " + output.string() + " is inside the protected root being added"});
+				"output root " + text::pathToUtf8(output) + " is inside the protected root being added"});
 		}
 	}
 
@@ -184,7 +186,7 @@ Status PathGuard::addProtectedRoot(const fs::path& path, std::string label) {
 	root.id = RootId(m_nextRootId++);
 	root.path = path;
 	root.resolvedPath = resolved.value();
-	root.label = label.empty() ? resolved.value().filename().string() : std::move(label);
+	root.label = label.empty() ? text::pathToUtf8(resolved.value().filename()) : std::move(label);
 	root.currentlyPresent = true;
 	if (auto id = identityOf(resolved.value())) {
 		root.deviceId = id->deviceId;
@@ -199,7 +201,7 @@ Status PathGuard::addProtectedRoot(const fs::path& path, std::string label) {
 Status PathGuard::addOutputRoot(const fs::path& path) {
 	auto resolved = resolveAsFarAsPossible(path);
 	if (!resolved) {
-		return Status(Error{ErrorCode::InvalidArgument, "output root cannot be resolved: " + path.string()});
+		return Status(Error{ErrorCode::InvalidArgument, "output root cannot be resolved: " + text::pathToUtf8(path)});
 	}
 
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -208,15 +210,15 @@ Status PathGuard::addOutputRoot(const fs::path& path) {
 		// The output must not be inside a protected root...
 		if (isLexicallyInside(resolved.value(), root.resolvedPath)) {
 			return Status(Error{ErrorCode::ProtectedRootViolation,
-				"output root " + resolved.value().string() + " resolves inside protected root "
-					+ root.resolvedPath.string()});
+				"output root " + text::pathToUtf8(resolved.value()) + " resolves inside protected root "
+					+ text::pathToUtf8(root.resolvedPath)});
 		}
 		// ...and must not contain one, which would let a recursive operation
 		// reach the protected files from above.
 		if (isLexicallyInside(root.resolvedPath, resolved.value())) {
 			return Status(Error{ErrorCode::ProtectedRootViolation,
-				"output root " + resolved.value().string() + " contains protected root "
-					+ root.resolvedPath.string()});
+				"output root " + text::pathToUtf8(resolved.value()) + " contains protected root "
+					+ text::pathToUtf8(root.resolvedPath)});
 		}
 	}
 
@@ -257,15 +259,16 @@ GuardDecision PathGuard::checkWriteLocked(const fs::path& path) const {
 									   : GuardVerdict::ResolvesIntoProtectedRoot;
 			decision.offendingRoot = root.resolvedPath;
 			decision.reason = literal
-				? ("path is inside protected source root " + root.resolvedPath.string())
-				: ("path \"" + path.string() + "\" resolves to \"" + decision.resolvedPath.string()
-					+ "\", inside protected source root " + root.resolvedPath.string());
+				? ("path is inside protected source root " + text::pathToUtf8(root.resolvedPath))
+				: ("path \"" + text::pathToUtf8(path) + "\" resolves to \""
+					+ text::pathToUtf8(decision.resolvedPath)
+					+ "\", inside protected source root " + text::pathToUtf8(root.resolvedPath));
 			return decision;
 		}
 		if (isLexicallyInside(root.resolvedPath, decision.resolvedPath)) {
 			decision.verdict = GuardVerdict::OverlapsProtectedRoot;
 			decision.offendingRoot = root.resolvedPath;
-			decision.reason = "path contains protected source root " + root.resolvedPath.string();
+			decision.reason = "path contains protected source root " + text::pathToUtf8(root.resolvedPath);
 			return decision;
 		}
 	}
@@ -364,7 +367,7 @@ Status PathGuard::createDirectories(const fs::path& path) const {
 	fs::create_directories(decision.resolvedPath, ec);
 	if (ec && !fs::is_directory(decision.resolvedPath)) {
 		return Status(Error{ErrorCode::IoError,
-			"cannot create directory " + decision.resolvedPath.string() + ": " + ec.message()});
+			"cannot create directory " + text::pathToUtf8(decision.resolvedPath) + ": " + ec.message()});
 	}
 	return Status::success();
 }
@@ -452,7 +455,7 @@ Result<ScopedTempFile> ScopedTempFile::createIn(const PathGuard& guard, const fs
 		fs::create_directories(decision.resolvedPath, ec);
 		if (ec) {
 			return Error{ErrorCode::IoError,
-				"cannot create staging directory " + decision.resolvedPath.string() + ": " + ec.message()};
+				"cannot create staging directory " + text::pathToUtf8(decision.resolvedPath) + ": " + ec.message()};
 		}
 	}
 
@@ -477,7 +480,8 @@ Result<ScopedTempFile> ScopedTempFile::createIn(const PathGuard& guard, const fs
 			CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
 		if (handle == INVALID_HANDLE_VALUE) {
 			if (::GetLastError() == ERROR_FILE_EXISTS) continue;
-			return Error{ErrorCode::IoError, "cannot create temporary file in " + decision.resolvedPath.string()};
+			return Error{ErrorCode::IoError,
+				"cannot create temporary file in " + text::pathToUtf8(decision.resolvedPath)};
 		}
 		::CloseHandle(handle);
 #else
@@ -485,7 +489,8 @@ Result<ScopedTempFile> ScopedTempFile::createIn(const PathGuard& guard, const fs
 		if (fd < 0) {
 			if (errno == EEXIST) continue;
 			return Error{ErrorCode::IoError,
-				"cannot create temporary file in " + decision.resolvedPath.string() + ": " + std::strerror(errno)};
+				"cannot create temporary file in " + text::pathToUtf8(decision.resolvedPath)
+					+ ": " + std::strerror(errno)};
 		}
 		::close(fd);
 #endif

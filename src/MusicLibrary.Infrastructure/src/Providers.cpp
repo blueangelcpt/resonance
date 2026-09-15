@@ -352,17 +352,17 @@ void LocalArtworkProvider::addEmbeddedCandidate(std::vector<std::uint8_t> bytes,
 Status LocalArtworkProvider::addImportedFile(const fs::path& path) {
 	std::ifstream file(path, std::ios::binary);
 	if (!file) {
-		return Status(Error{ErrorCode::IoError, "cannot read " + path.string()});
+		return Status(Error{ErrorCode::IoError, "cannot read " + text::pathToUtf8(path)});
 	}
 	std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	if (bytes.empty()) {
-		return Status(Error{ErrorCode::IoError, "imported image is empty: " + path.string()});
+		return Status(Error{ErrorCode::IoError, "imported image is empty: " + text::pathToUtf8(path)});
 	}
 	if (!ImagePipeline::isDecodable(bytes.data(), bytes.size())) {
 		return Status(Error{ErrorCode::Unsupported,
-			"imported file is not a JPEG or PNG: " + path.string()});
+			"imported file is not a JPEG or PNG: " + text::pathToUtf8(path)});
 	}
-	m_held.push_back({std::move(bytes), "imported by the user", path.string()});
+	m_held.push_back({std::move(bytes), "imported by the user", text::pathToUtf8(path)});
 	return Status::success();
 }
 
@@ -403,8 +403,8 @@ Result<std::vector<ArtworkCandidate>> LocalArtworkProvider::findArtwork(const Al
 			ArtworkCandidate candidate;
 			candidate.providerId = id();
 			candidate.providerName = displayName();
-			candidate.localPath = path.string();
-			candidate.imageUrl = "file://" + path.string();
+			candidate.localPath = text::pathToUtf8(path);
+			candidate.imageUrl = "file://" + text::pathToUtf8(path);
 			candidate.byteLength = static_cast<std::int64_t>(fs::file_size(path, ec));
 			candidate.sourceType = ArtworkSourceType::UserSupplied;
 			candidate.coverMatch = CoverMatch::Unknown;

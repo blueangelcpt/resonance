@@ -31,7 +31,7 @@ private:
 };
 
 bool isMp3(const fs::path& path) {
-	std::string extension = path.extension().string();
+	std::string extension = text::pathToUtf8(path.extension());
 	std::transform(extension.begin(), extension.end(), extension.begin(),
 		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 	return extension == ".mp3";
@@ -44,8 +44,11 @@ std::string relativePathOf(const fs::path& path, const fs::path& root) {
 	fs::path relative = fs::relative(path, root, ec);
 	if (ec) relative = path.filename();
 
-	std::string out = relative.generic_string();
-	return out;
+	// generic_u8string(), not generic_string(): both force forward slashes,
+	// but generic_string() converts through the native encoding the same
+	// unsafe way string() does (see pathToUtf8's comment).
+	const auto u8 = relative.generic_u8string();
+	return std::string(u8.begin(), u8.end());
 }
 
 } // namespace
@@ -113,7 +116,7 @@ Status Library::open(LibraryConfig config) {
 	fs::create_directories(m_config.dataDirectory, ec);
 	if (ec && !fs::is_directory(m_config.dataDirectory)) {
 		return Status(Error{ErrorCode::IoError,
-			"cannot create the data directory " + m_config.dataDirectory.string() + ": " + ec.message()});
+			"cannot create the data directory " + text::pathToUtf8(m_config.dataDirectory) + ": " + ec.message()});
 	}
 
 	// --- Protected roots first ---------------------------------------------
@@ -126,7 +129,7 @@ Status Library::open(LibraryConfig config) {
 	// The catalogue, assets, caches and logs must live outside the source roots.
 	if (m_guard.isInsideProtectedRoot(m_config.dataDirectory)) {
 		return Status(Error{ErrorCode::ProtectedRootViolation,
-			"the data directory " + m_config.dataDirectory.string()
+			"the data directory " + text::pathToUtf8(m_config.dataDirectory)
 				+ " is inside a protected source root; the catalogue must live outside the music"});
 	}
 
@@ -202,7 +205,7 @@ Result<ScanResult> Library::scan(ProgressCallback progress) {
 		if (!root.currentlyPresent) {
 			// FN-SCAN-04: an absent root is reported, never treated as deletion
 			// of everything it contained.
-			result.warnings.push_back("source root \"" + root.path.string()
+			result.warnings.push_back("source root \"" + text::pathToUtf8(root.path)
 				+ "\" is not currently reachable; its catalogued files are left untouched rather than "
 				  "being recorded as deleted");
 			continue;
@@ -239,7 +242,7 @@ Result<ScanResult> Library::scan(ProgressCallback progress) {
 
 		if (ec) {
 			(void)m_catalogue->finishScan(result.runId, "failed", 0, 0, 0, 0, ec.message());
-			return Error{ErrorCode::IoError, "cannot walk " + root.resolvedPath.string()};
+			return Error{ErrorCode::IoError, "cannot walk " + text::pathToUtf8(root.resolvedPath)};
 		}
 
 		// One transaction per batch: small transactions, as the FRD requires,
@@ -327,9 +330,19 @@ Result<ScanResult> Library::scan(ProgressCallback progress) {
 			FileRecord record;
 			record.rootId = *rootId.value();
 			record.relativePath = relative;
-			record.relativeDirectory = fs::path(relative).parent_path().generic_string();
-			record.fileName = fs::path(relative).filename().string();
-			record.extension = fs::path(relative).extension().string();
+			// Sliced from the already-UTF-8 `relative` string rather than round
+			// tripped back through fs::path(relative).…: on Windows, constructing
+			// a path from a narrow string and reading one back both go through
+			// the native ANSI codepage, which is exactly the unsafe conversion
+			// pathToUtf8() exists to avoid (see its comment). fileName/extension
+			// come straight from `path`, which has never left wide-string form.
+			{
+				const std::size_t slash = relative.find_last_of('/');
+				record.relativeDirectory = (slash == std::string::npos)
+					? std::string() : relative.substr(0, slash);
+			}
+			record.fileName = text::pathToUtf8(path.filename());
+			record.extension = text::pathToUtf8(path.extension());
 			if (identity) record.identity = *identity;
 			record.audio = read.value().layout.audio;
 			record.contentSha256 = snapshot.contentSha256;

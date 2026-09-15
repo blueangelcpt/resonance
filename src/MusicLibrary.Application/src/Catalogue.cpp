@@ -88,7 +88,7 @@ Result<RootId> Catalogue::upsertRoot(const fs::path& path, const fs::path& resol
 			"UPDATE library_roots SET resolved_path = ?, label = ?, volume_identity = ?, device_id = ?, "
 			"last_seen_at = ? WHERE id = ?;");
 		if (!statement) return statement.error();
-		statement.value().bindAll(resolved.string(), label, volumeIdentity,
+		statement.value().bindAll(text::pathToUtf8(resolved), label, volumeIdentity,
 			static_cast<std::int64_t>(deviceId), nowIso8601(), existing.value()->value);
 		if (auto status = statement.value().execute(); !status) return status.error();
 		return *existing.value();
@@ -100,7 +100,7 @@ Result<RootId> Catalogue::upsertRoot(const fs::path& path, const fs::path& resol
 	if (!statement) return statement.error();
 
 	const std::string timestamp = nowIso8601();
-	statement.value().bindAll(path.string(), resolved.string(), label, kind, volumeIdentity,
+	statement.value().bindAll(text::pathToUtf8(path), text::pathToUtf8(resolved), label, kind, volumeIdentity,
 		static_cast<std::int64_t>(deviceId), timestamp, timestamp);
 	if (auto status = statement.value().execute(); !status) return status.error();
 	return RootId(m_database.lastInsertRowId());
@@ -110,7 +110,7 @@ Result<std::optional<RootId>> Catalogue::findRoot(const fs::path& path) const {
 	auto statement = const_cast<Database&>(m_database).prepare(
 		"SELECT id FROM library_roots WHERE path = ?;");
 	if (!statement) return statement.error();
-	statement.value().bind(1, path.string());
+	statement.value().bind(1, text::pathToUtf8(path));
 
 	auto row = statement.value().step();
 	if (!row) return row.error();
@@ -334,10 +334,22 @@ Status Catalogue::markFileUnreadable(RootId root, ScanRunId scan, std::string_vi
 	std::string_view status, std::string_view error) {
 	FileRecord record;
 	record.relativePath = std::string(relativePath);
-	const fs::path path(record.relativePath);
-	record.relativeDirectory = path.parent_path().string();
-	record.fileName = path.filename().string();
-	record.extension = path.extension().string();
+
+	// Sliced directly from the (already forward-slash, UTF-8) relative path
+	// rather than round-tripped through fs::path(...).string(): on Windows,
+	// both directions of that round trip go through the native ANSI
+	// codepage, the same unsafe conversion pathToUtf8() exists to avoid.
+	const std::size_t slash = record.relativePath.find_last_of('/');
+	record.relativeDirectory = (slash == std::string::npos)
+		? std::string() : record.relativePath.substr(0, slash);
+	const std::string name = (slash == std::string::npos)
+		? record.relativePath : record.relativePath.substr(slash + 1);
+	record.fileName = name;
+	const std::size_t dot = name.find_last_of('.');
+	// No extension when there is no dot, or the name is a dotfile (a leading
+	// dot with nothing before it) — matching fs::path::extension()'s rule.
+	record.extension = (dot == std::string::npos || dot == 0) ? std::string() : name.substr(dot);
+
 	record.readStatus = std::string(status);
 	record.readError = std::string(error);
 

@@ -334,7 +334,7 @@ Result<FilePlan> Library::buildPlan(const FileRecord& record, CollisionDetector&
 		plan.notes.push_back("the source file is not currently reachable");
 		return plan;
 	}
-	plan.sourcePath = sourcePath.string();
+	plan.sourcePath = text::pathToUtf8(sourcePath);
 
 	// --- Observed tags, with payloads, so the preview is frame-exact ---------
 	TagReadOptions options;
@@ -486,7 +486,7 @@ Result<ChangeSet> Library::plan(ProgressCallback progress) {
 	}
 
 	ChangeSet set;
-	set.outputRootPath = m_config.outputRoot.string();
+	set.outputRootPath = text::pathToUtf8(m_config.outputRoot);
 	set.createdAtIso8601 = nowIso8601();
 	set.configHash = m_config.hash();
 
@@ -701,7 +701,7 @@ Result<ExportResult> Library::exportCopies(ChangeSetId set, ProgressCallback pro
 		}
 
 		(void)m_catalogue->setOperationState(set, stored.fileId, "applying",
-			temporary.value().path().string());
+			text::pathToUtf8(temporary.value().path()));
 
 		auto written = TagWriter::writeToNewFile(sourcePath, temporary.value().path(), request, m_guard);
 		if (!written) {
@@ -929,7 +929,7 @@ Status Library::writeNamingConventionReport(const fs::path& destination) const {
 
 	std::ofstream out(destination);
 	if (!out) {
-		return Status(Error{ErrorCode::IoError, "cannot write " + destination.string()});
+		return Status(Error{ErrorCode::IoError, "cannot write " + text::pathToUtf8(destination)});
 	}
 
 	const NamingConformity& c = conformity.value();
@@ -1069,7 +1069,7 @@ Status Library::importArtworkFile(AlbumId album, const fs::path& path) {
 	candidate.localPath = stored.value();
 
 	auto saved = m_catalogue->saveArtworkCandidate(album, candidate, "locked",
-		"imported by the user from " + path.filename().string(),
+		"imported by the user from " + text::pathToUtf8(path.filename()),
 		std::string(ArtworkPolicy::kPolicyVersion));
 	if (!saved) return Status(saved.error());
 
@@ -1092,7 +1092,7 @@ Status Library::importArtworkFile(AlbumId album, const fs::path& path) {
 			"the imported image cannot produce the required derivative: " + derivative.error().message});
 	}
 
-	return m_catalogue->recordManualDecision("album", album.value, "artwork", "lock", path.string(),
+	return m_catalogue->recordManualDecision("album", album.value, "artwork", "lock", text::pathToUtf8(path),
 		saved.value().value, "imported file");
 }
 

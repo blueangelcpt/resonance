@@ -121,7 +121,7 @@ else()
 endif()
 
 if(ML_BUILD_DESKTOP)
-	find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Multimedia)
+	find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Multimedia Svg)
 	qt_standard_project_setup()
 endif()
 

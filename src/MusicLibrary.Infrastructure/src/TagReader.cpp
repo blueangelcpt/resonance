@@ -36,6 +36,22 @@ namespace ml {
 
 namespace {
 
+// TagLib::FileName takes a wchar_t* on Windows (exact) or a char* elsewhere
+// (assumed UTF-8, matching fs::path::string() on POSIX). fs::path::string()
+// on Windows instead converts through the system ANSI codepage and silently
+// mangles any character it cannot represent — routine for a real music
+// library. wstring() keeps the exact Unicode path TagLib actually opens.
+//
+// Returned by value as a properly-owned string (not TagLib::FileName itself):
+// on POSIX, FileName is just `const char*`, so a helper handing back a
+// FileName built from a local std::string's c_str() would return a pointer
+// into an already-destroyed temporary.
+#ifdef _WIN32
+std::wstring nativeTagPath(const fs::path& path) { return path.wstring(); }
+#else
+std::string nativeTagPath(const fs::path& path) { return path.string(); }
+#endif
+
 std::string toStd(const TagLib::String& s) {
 	return s.to8Bit(true);   // true == UTF-8
 }
@@ -193,7 +209,8 @@ Result<TagReadResult> TagReader::read(const fs::path& path, TagReadOptions optio
 	// hashing pass reopens the same path: on Windows, TagLib's file stream
 	// does not share its read handle, so a still-open TagLib::File makes the
 	// hashing pass's own open of the same file fail silently.
-	auto filePtr = std::make_unique<TagLib::MPEG::File>(path.string().c_str(), false);
+	const auto nativePath = nativeTagPath(path);
+	auto filePtr = std::make_unique<TagLib::MPEG::File>(nativePath.c_str(), false);
 	TagLib::MPEG::File& file = *filePtr;
 	if (!file.isValid()) {
 		snapshot.readWarnings.push_back("TagLib could not open the file; only the raw inventory is available");

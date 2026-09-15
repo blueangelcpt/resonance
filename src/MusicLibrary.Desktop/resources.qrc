@@ -1,0 +1,5 @@
+<RCC>
+	<qresource prefix="/icons">
+		<file alias="resonance.svg">../../packaging/windows/resonance.svg</file>
+	</qresource>
+</RCC>

@@ -47,6 +47,11 @@ if(WIN32)
 			"CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Resonance.lnk' '$INSTDIR\\\\${CMAKE_INSTALL_BINDIR}\\\\resonance-desktop.exe'")
 		set(CPACK_NSIS_DELETE_ICONS_EXTRA
 			"Delete '$SMPROGRAMS\\\\$START_MENU\\\\Resonance.lnk'")
+		# The Start Menu shortcut above inherits its icon from resonance-desktop.exe
+		# (which carries it via packaging/windows/resonance.rc); this is the
+		# separate icon for the installer/uninstaller programs themselves.
+		set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/resonance.ico")
+		set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/resonance.ico")
 	endif()
 
 elseif(APPLE)

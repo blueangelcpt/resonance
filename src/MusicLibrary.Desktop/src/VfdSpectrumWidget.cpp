@@ -47,6 +47,15 @@ QColor levelColour(float normalised) {
 	return mix(theme::kNeonPink, theme::kOverloadRed, (normalised - 0.85f) / 0.15f);
 }
 
+/// A dim ghost of the row's own colour for its unlit cells, the way a real VFD
+/// shows the whole gradient at low brightness rather than a blank gap.
+QColor darken(const QColor& colour, float factor) {
+	factor = std::clamp(factor, 0.0f, 1.0f);
+	return QColor(static_cast<int>(static_cast<float>(colour.red()) * factor),
+		static_cast<int>(static_cast<float>(colour.green()) * factor),
+		static_cast<int>(static_cast<float>(colour.blue()) * factor));
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -59,6 +68,14 @@ Spectrogram buildSpectrogram(const AnalysisAudio& audio, int bandCount) {
 
 	constexpr std::size_t kWindow = 1024;
 	constexpr std::size_t kHop = 512;
+	// The transform itself runs zero-padded to a much larger size. The real
+	// analysis window stays at kWindow samples (unchanged time resolution and
+	// coherent gain); padding it out before the transform only interpolates
+	// the DFT more finely. That is what keeps the low end of a log-spaced band
+	// layout from mapping dozens of adjacent bands onto the same one or two
+	// raw bins: kWindow's own resolution (~43 Hz/bin at 44.1 kHz) is far
+	// coarser than the band spacing down near 30 Hz.
+	constexpr std::size_t kFftSize = 8192;
 	if (audio.samples.size() < kWindow) return result;
 
 	result.bandCount = bandCount;
@@ -82,9 +99,9 @@ Spectrogram buildSpectrogram(const AnalysisAudio& audio, int bandCount) {
 	for (int b = 0; b <= bandCount; ++b) {
 		const double t = static_cast<double>(b) / bandCount;
 		const double hz = lowHz * std::pow(highHz / lowHz, t);
-		const double bin = hz * kWindow / audio.sampleRateHz;
+		const double bin = hz * kFftSize / audio.sampleRateHz;
 		edges[static_cast<std::size_t>(b)] = static_cast<std::size_t>(
-			std::clamp(bin, 1.0, static_cast<double>(kWindow / 2 - 1)));
+			std::clamp(bin, 1.0, static_cast<double>(kFftSize / 2 - 1)));
 	}
 
 	const std::size_t frames = (audio.samples.size() - kWindow) / kHop + 1;
@@ -92,14 +109,17 @@ Spectrogram buildSpectrogram(const AnalysisAudio& audio, int bandCount) {
 	// columns for a widget a few hundred pixels wide.
 	const std::size_t stride = std::max<std::size_t>(1, frames / 4000);
 
-	std::vector<float> real(kWindow);
-	std::vector<float> imaginary(kWindow);
+	std::vector<float> real(kFftSize, 0.0f);
+	std::vector<float> imaginary(kFftSize, 0.0f);
 
 	for (std::size_t frame = 0; frame < frames; frame += stride) {
 		const std::size_t offset = frame * kHop;
+		// Reset fully: fftRadix2 transforms the whole padded buffer in place,
+		// so the previous frame's output lingers past kWindow unless cleared.
+		std::fill(real.begin(), real.end(), 0.0f);
+		std::fill(imaginary.begin(), imaginary.end(), 0.0f);
 		for (std::size_t i = 0; i < kWindow; ++i) {
 			real[i] = audio.samples[offset + i] * window[i];
-			imaginary[i] = 0.0f;
 		}
 		fftRadix2(real, imaginary, false);
 
@@ -111,11 +131,13 @@ Spectrogram buildSpectrogram(const AnalysisAudio& audio, int bandCount) {
 			// Peak within the band reads better on a dot matrix than a mean: a
 			// narrow tone stays visible instead of being averaged into the floor.
 			float peak = 0.0f;
-			for (std::size_t bin = from; bin < to && bin < kWindow / 2; ++bin) {
+			for (std::size_t bin = from; bin < to && bin < kFftSize / 2; ++bin) {
 				const float magnitude = std::sqrt(real[bin] * real[bin] + imaginary[bin] * imaginary[bin]);
 				peak = std::max(peak, magnitude);
 			}
 			// Normalise by the window's coherent gain so full scale is ~1.0.
+			// This uses kWindow, not kFftSize: zero padding adds no energy, it
+			// only adds interpolated points between the real bins.
 			column[static_cast<std::size_t>(b)] = toNormalisedDb(peak * 4.0f / static_cast<float>(kWindow));
 		}
 		result.columns.push_back(std::move(column));
@@ -197,6 +219,9 @@ namespace {
 /// The analysis window for the live path. 1024 at 44.1 kHz is ~23 ms, which is
 /// responsive enough to track a beat without flickering.
 constexpr std::size_t kLiveWindow = 1024;
+/// Zero-padded transform size — see the comment in buildSpectrogram() for why
+/// this needs to be much larger than kLiveWindow.
+constexpr std::size_t kLiveFftSize = 8192;
 } // namespace
 
 void VfdSpectrumWidget::setLiveMode(bool live) {
@@ -224,9 +249,9 @@ void VfdSpectrumWidget::rebuildBands(int sampleRateHz) {
 	for (int b = 0; b <= bands; ++b) {
 		const double t = static_cast<double>(b) / bands;
 		const double hz = lowHz * std::pow(highHz / lowHz, t);
-		const double bin = hz * static_cast<double>(kLiveWindow) / sampleRateHz;
+		const double bin = hz * static_cast<double>(kLiveFftSize) / sampleRateHz;
 		m_bandEdges[static_cast<std::size_t>(b)] = static_cast<std::size_t>(
-			std::clamp(bin, 1.0, static_cast<double>(kLiveWindow / 2 - 1)));
+			std::clamp(bin, 1.0, static_cast<double>(kLiveFftSize / 2 - 1)));
 	}
 
 	if (m_window.size() != kLiveWindow) {
@@ -283,9 +308,10 @@ void VfdSpectrumWidget::pushLiveSamples(const std::vector<float>& samples, int s
 
 	m_emptyReason.clear();
 
-	// Take the most recent window: the audio nearest the playhead.
-	std::vector<float> real(kLiveWindow);
-	std::vector<float> imaginary(kLiveWindow, 0.0f);
+	// Take the most recent window: the audio nearest the playhead. Zero-padded
+	// to kLiveFftSize before the transform (see buildSpectrogram()'s comment).
+	std::vector<float> real(kLiveFftSize, 0.0f);
+	std::vector<float> imaginary(kLiveFftSize, 0.0f);
 	const std::size_t offset = samples.size() - kLiveWindow;
 	for (std::size_t i = 0; i < kLiveWindow; ++i) {
 		real[i] = samples[offset + i] * m_window[i];
@@ -298,10 +324,12 @@ void VfdSpectrumWidget::pushLiveSamples(const std::vector<float>& samples, int s
 		const std::size_t to = std::max(from + 1, m_bandEdges[static_cast<std::size_t>(b) + 1]);
 
 		float peak = 0.0f;
-		for (std::size_t bin = from; bin < to && bin < kLiveWindow / 2; ++bin) {
+		for (std::size_t bin = from; bin < to && bin < kLiveFftSize / 2; ++bin) {
 			const float magnitude = std::sqrt(real[bin] * real[bin] + imaginary[bin] * imaginary[bin]);
 			peak = std::max(peak, magnitude);
 		}
+		// kWindow (not kFftSize): zero padding adds no energy, only interpolated
+		// points between the real bins.
 		column[static_cast<std::size_t>(b)] =
 			toNormalisedDb(peak * 4.0f / static_cast<float>(kLiveWindow));
 	}
@@ -440,39 +468,58 @@ void VfdSpectrumWidget::drawMatrix(QPainter& painter, const QRect& plot) const {
 
 	const int step = m_cellSize + m_cellGap;
 	const int rows = std::max(1, plot.height() / step);
-	const int barWidth = std::max(2, plot.width() / bands);
-	const int dotWidth = std::max(1, barWidth - m_cellGap);
 
-	for (int b = 0; b < bands; ++b) {
-		const float level = (static_cast<std::size_t>(b) < m_levels.size())
-			? m_levels[static_cast<std::size_t>(b)] : 0.0f;
-		const int litRows = static_cast<int>(std::lround(level * static_cast<float>(rows)));
+	// Each row's colour depends only on its height, not on which bar it is in,
+	// so compute it once per row rather than once per cell.
+	std::vector<QColor> litColours(static_cast<std::size_t>(rows));
+	std::vector<QColor> unlitColours(static_cast<std::size_t>(rows));
+	for (int r = 0; r < rows; ++r) {
+		const float rowLevel = static_cast<float>(r + 1) / static_cast<float>(rows);
+		const QColor colour = levelColour(rowLevel);
+		litColours[static_cast<std::size_t>(r)] = colour;
+		// The unlit grid mirrors the same gradient, darkened, rather than a flat
+		// grey: that ghost of the full colour range is what gives a real VFD its
+		// texture instead of a plain gap.
+		unlitColours[static_cast<std::size_t>(r)] = darken(colour, 0.22f);
+	}
 
-		const int x = plot.left() + b * barWidth;
+	// Classic VFD look: every bar is exactly one pixel wide with a one pixel
+	// gap, so the bar count is however many columns fit the plot rather than a
+	// fixed band count. The underlying analysis has far fewer distinct bands
+	// (bounded by FFT resolution — see buildSpectrogram()), so neighbouring
+	// columns interpolate between them, the way a dense display smooths a
+	// coarser set of frequency bins.
+	constexpr int kBarStep = 2;   // 1 px bar + 1 px gap
+	const int barCount = std::max(1, plot.width() / kBarStep);
+
+	for (int i = 0; i < barCount; ++i) {
+		const float sourcePos = (barCount > 1 && bands > 1)
+			? static_cast<float>(i) / static_cast<float>(barCount - 1) * static_cast<float>(bands - 1)
+			: 0.0f;
+		const int band = std::clamp(static_cast<int>(std::lround(sourcePos)), 0, bands - 1);
+
+		const float level = (static_cast<std::size_t>(band) < m_levels.size())
+			? m_levels[static_cast<std::size_t>(band)] : 0.0f;
+		const int litRows = std::clamp(
+			static_cast<int>(std::lround(level * static_cast<float>(rows))), 0, rows);
+
+		const int x = plot.left() + i * kBarStep;
 
 		for (int r = 0; r < rows; ++r) {
 			const int y = plot.bottom() - (r + 1) * step + m_cellGap;
-			const float rowLevel = static_cast<float>(r + 1) / static_cast<float>(rows);
-
-			if (r < litRows) {
-				painter.fillRect(x, y, dotWidth, m_cellSize, levelColour(rowLevel));
-			} else {
-				// Unlit cells stay faintly visible, which is what gives a real VFD
-				// its texture rather than a plain black gap.
-				QColor unlit = theme::kSplitterMuted;
-				unlit.setAlpha(70);
-				painter.fillRect(x, y, dotWidth, m_cellSize, unlit);
-			}
+			const QColor& colour = (r < litRows) ? litColours[static_cast<std::size_t>(r)]
+												  : unlitColours[static_cast<std::size_t>(r)];
+			painter.fillRect(x, y, 1, m_cellSize, colour);
 		}
 
 		// Peak-hold marker.
-		if (m_peakHold && static_cast<std::size_t>(b) < m_peaks.size()) {
-			const float peak = m_peaks[static_cast<std::size_t>(b)];
+		if (m_peakHold && static_cast<std::size_t>(band) < m_peaks.size()) {
+			const float peak = m_peaks[static_cast<std::size_t>(band)];
 			if (peak > 0.02f) {
-				const int peakRow = std::min(rows - 1,
-					static_cast<int>(std::lround(peak * static_cast<float>(rows))));
+				const int peakRow = std::clamp(
+					static_cast<int>(std::lround(peak * static_cast<float>(rows))), 0, rows - 1);
 				const int y = plot.bottom() - (peakRow + 1) * step + m_cellGap;
-				painter.fillRect(x, y, dotWidth, m_cellSize, theme::kPrimary);
+				painter.fillRect(x, y, 1, m_cellSize, theme::kPrimary);
 			}
 		}
 	}

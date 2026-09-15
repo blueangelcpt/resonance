@@ -10,6 +10,7 @@
 
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QIcon>
 #include <QPixmap>
 #include <QStyleFactory>
 #include <QTimer>
@@ -73,6 +74,10 @@ int main(int argc, char** argv) {
 	application.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
 	application.setFont(ml::desktop::theme::bodyFont(9));
 	application.setStyleSheet(ml::desktop::theme::applicationStyleSheet());
+	// On Windows the .exe's own compiled-in resource (packaging/windows/resonance.rc)
+	// covers Explorer and the taskbar before launch; this covers the window/title
+	// bar icon and every other platform, from the same source SVG via QtSvg.
+	application.setWindowIcon(QIcon(QStringLiteral(":/icons/resonance.svg")));
 
 	ml::desktop::MainWindow window;
 

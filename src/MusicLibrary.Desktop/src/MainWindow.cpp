@@ -134,7 +134,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 	m_outputEdit->setText(settings.value(QStringLiteral("outputRoot")).toString());
 	m_dataEdit->setText(settings.value(QStringLiteral("dataDirectory")).toString());
 	if (m_dataEdit->text().isEmpty()) {
-		m_dataEdit->setText(qs(LibraryConfig::defaultDataDirectory().string()));
+		m_dataEdit->setText(qs(text::pathToUtf8(LibraryConfig::defaultDataDirectory())));
 	}
 }
 
@@ -221,7 +221,7 @@ void MainWindow::refreshHeaderTelemetry() {
 	const auto roots = m_library->guard().protectedRoots();
 	m_headerSource->setText(roots.empty()
 		? QStringLiteral("no source root")
-		: qs(roots.front().resolvedPath.string()));
+		: qs(text::pathToUtf8(roots.front().resolvedPath)));
 
 	auto coverage = m_library->coverage();
 	if (!coverage) return;
@@ -471,9 +471,17 @@ void MainWindow::onPlayerState(PlaybackState state) {
 
 	if (m_spectrum) {
 		// While audio is playing the analyser runs live off the output samples.
-		// When it stops, it reverts to the precomputed spectrogram so the panel
-		// still shows something meaningful for the selected track.
-		m_spectrum->setLiveMode(state == PlaybackState::Playing);
+		// Pausing leaves live mode on: pushLiveSamples() simply stops being fed
+		// (the timer below is stopped too), so the display holds its last frame
+		// rather than switching to the precomputed spectrogram — which may not
+		// even exist yet if the track was played without first being analysed,
+		// and would otherwise blank the panel the instant playback pauses.
+		// Only a real stop reverts to the precomputed view.
+		if (state == PlaybackState::Playing) {
+			m_spectrum->setLiveMode(true);
+		} else if (state == PlaybackState::Stopped) {
+			m_spectrum->setLiveMode(false);
+		}
 	}
 
 	if (state == PlaybackState::Playing) {
@@ -488,8 +496,9 @@ void MainWindow::onPlayerState(PlaybackState state) {
 	} else {
 		m_visualiserTimer->stop();
 		if (m_spectrumTelemetry) {
-			m_spectrumTelemetry->setText(QStringLiteral(
-				"FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
+			m_spectrumTelemetry->setText(state == PlaybackState::Paused
+				? QStringLiteral("LIVE (paused) · FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · peak hold")
+				: QStringLiteral("FFT 1024 · Hann · 96 log bands · 30 Hz–16 kHz · peak hold · minimp3 decode"));
 		}
 	}
 }
@@ -725,7 +734,7 @@ QWidget* MainWindow::buildAlbumsTab() {
 	m_albumTable->setAlternatingRowColors(true);
 	m_albumTable->verticalHeader()->setVisible(false);
 	m_albumTable->horizontalHeader()->setStretchLastSection(true);
-	m_albumTable->setMaximumHeight(260);
+	m_albumTable->setMaximumHeight(220);
 	connect(m_albumTable, &QTableView::clicked, this, &MainWindow::onAlbumActivated);
 	splitter->addWidget(m_albumTable);
 
@@ -740,6 +749,15 @@ QWidget* MainWindow::buildAlbumsTab() {
 	splitter->addWidget(m_reviewWidget);
 	splitter->setStretchFactor(0, 1);
 	splitter->setStretchFactor(1, 4);
+	// Stretch factors alone only govern how *extra* space is distributed on a
+	// later resize; QSplitter's first layout falls back to each widget's
+	// sizeHint(), and QTableView's sizeHint asks for enough room to show its
+	// rows without scrolling. Left alone, that let the table claim most of the
+	// tab on first paint and left the review pane — candidate list, image
+	// comparison, evidence browser — squeezed into a couple of visible rows.
+	// An explicit initial split fixes that regardless of sizeHint.
+	splitter->setSizes({220, 640});
+	splitter->setCollapsible(1, false);
 
 	layout->addWidget(splitter, 1);
 	return page;
@@ -1010,7 +1028,7 @@ void MainWindow::onExport() {
 	const auto answer = QMessageBox::question(this, QStringLiteral("Export copies"),
 		QStringLiteral("Write organised copies into:\n\n%1\n\n"
 			"Your source collection is not modified. Continue?")
-			.arg(qs(m_library->config().outputRoot.string())),
+			.arg(qs(text::pathToUtf8(m_library->config().outputRoot))),
 		QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
 	if (answer != QMessageBox::Yes) return;
 

@@ -1,0 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Windows resource: the .exe's icon, shown in Explorer, the taskbar and Alt-Tab
+// before the application ever sets a window icon at runtime.
+IDI_ICON1 ICON "resonance.ico"
