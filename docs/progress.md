@@ -11,9 +11,9 @@ Everything **not** done is in `docs/open-questions.md`.
 ## Build and test
 
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-ctest --test-dir build --output-on-failure
+cmake --preset linux-release
+cmake --build --preset linux-release
+ctest --preset linux-release
 ```
 
 | | |
@@ -21,8 +21,8 @@ ctest --test-dir build --output-on-failure
 | Configure | exit 0 |
 | Build | exit 0, **zero warnings in first-party code** under `-Wall -Wextra -Wpedantic -Wcast-qual -Wconversion -Wsign-conversion -Wnon-virtual-dtor -Woverloaded-virtual -Wdouble-promotion -Wformat=2` |
 | Tests | **3/3 suites, 89 cases, 292 assertions, 0 failures** |
-| CLI | `build/src/MusicLibrary.Cli/resonance`, 1.77 MB |
-| Desktop | `build/src/MusicLibrary.Desktop/resonance-desktop`, 2.43 MB |
+| CLI | `build/linux-release/src/MusicLibrary.Cli/resonance`, 1.77 MB |
+| Desktop | `build/linux-release/src/MusicLibrary.Desktop/resonance-desktop`, 2.43 MB |
 
 Third-party headers are included as system headers, so the strict warning set
 applies to this project's code and not to vendored code.
