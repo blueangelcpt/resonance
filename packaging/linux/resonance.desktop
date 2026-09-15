@@ -6,6 +6,10 @@ Comment=Catalogue, enrich and organise an MP3 collection without modifying the o
 Exec=resonance-desktop
 Icon=resonance
 Terminal=false
+# X11 sessions match a window to this entry by WM_CLASS, which Qt sets
+# from the executable's basename. Wayland uses the application id set in
+# main.cpp, which is this file's basename.
+StartupWMClass=resonance-desktop
 Categories=AudioVideo;Audio;Music;
 Keywords=mp3;music;library;tags;id3;artwork;bpm;lyrics;
 StartupNotify=true

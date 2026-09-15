@@ -78,6 +78,11 @@ int main(int argc, char** argv) {
 	// covers Explorer and the taskbar before launch; this covers the window/title
 	// bar icon and every other platform, from the same source SVG via QtSvg.
 	application.setWindowIcon(QIcon(QStringLiteral(":/icons/resonance.svg")));
+	// Wayland compositors ignore setWindowIcon for the dock and the app
+	// switcher. They identify a window by its application id and look the icon
+	// up in the matching desktop entry instead, so this name has to equal the
+	// basename of packaging/linux/resonance.desktop. Harmless elsewhere.
+	QGuiApplication::setDesktopFileName(QStringLiteral("resonance"));
 
 	ml::desktop::MainWindow window;
 
