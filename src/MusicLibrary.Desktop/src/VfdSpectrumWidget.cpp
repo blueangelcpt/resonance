@@ -56,6 +56,56 @@ QColor darken(const QColor& colour, float factor) {
 		static_cast<int>(static_cast<float>(colour.blue()) * factor));
 }
 
+/// Distributes `totalBins` FFT bins across `bands` bars so each bar gets a
+/// distinct, non-overlapping, non-empty range: the bare minimum of 1 bin
+/// where bins are scarce, more where they are abundant.
+///
+/// Ported from Winamp Classic's own LogBarValueTable algorithm
+/// (WACUP/vis_classic, LogBarTable.cpp — found via the actual reference
+/// implementation). Picking each bar's range by rounding a log-spaced
+/// *frequency position* to a bin index — the previous approach here — can
+/// round two neighbouring bars to the identical bin where bins are scarce
+/// (the low end), making them read the same data and show the same height:
+/// a structural cause of the "staircase" artefact that persisted even after
+/// zero-padding the FFT for finer bin spacing. A cumulative bin-*count*
+/// distribution cannot produce that, because each bar's range starts
+/// exactly where the previous one's ended: bar 0 gets bin [0], bar 1 gets
+/// bin [1], and so on, with the surplus bins handed out from the high end
+/// down in shrinking chunks (there are always far more bins available up
+/// there) so the low end never has to share.
+std::vector<std::size_t> assignBinCounts(std::size_t totalBins, int bands) {
+	std::vector<std::size_t> counts(static_cast<std::size_t>(std::max(bands, 0)), 1);
+	if (bands <= 0 || static_cast<std::size_t>(bands) >= totalBins) return counts;
+
+	std::int64_t notAssigned = static_cast<std::int64_t>(totalBins) - bands;
+	const double div = std::pow(static_cast<double>(notAssigned), 1.0 / bands);
+
+	const auto assignCount = [div](std::int64_t remaining) -> std::int64_t {
+		const std::int64_t n = static_cast<std::int64_t>(
+			static_cast<double>(remaining) - static_cast<double>(remaining) / div + 0.5);
+		return n <= 0 ? std::int64_t{1} : n;
+	};
+
+	std::int64_t assign = assignCount(notAssigned);
+	while (notAssigned > 0) {
+		for (int w = bands - 1; w >= 0 && notAssigned > 0; --w) {
+			counts[static_cast<std::size_t>(w)] += static_cast<std::size_t>(assign);
+			notAssigned -= assign;
+			assign = assignCount(notAssigned);
+		}
+	}
+	return counts;
+}
+
+/// Turns a set of per-bar bin counts into cumulative edges starting at
+/// `lowBin`, so band b covers [edges[b], edges[b+1]).
+std::vector<std::size_t> cumulativeEdges(std::size_t lowBin, const std::vector<std::size_t>& counts) {
+	std::vector<std::size_t> edges(counts.size() + 1);
+	edges[0] = lowBin;
+	for (std::size_t b = 0; b < counts.size(); ++b) edges[b + 1] = edges[b] + counts[b];
+	return edges;
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -90,19 +140,19 @@ Spectrogram buildSpectrogram(const AnalysisAudio& audio, int bandCount) {
 			* static_cast<float>(i) / static_cast<float>(kWindow - 1)));
 	}
 
-	// Logarithmic band edges from 30 Hz to just under Nyquist, matching the
-	// design's 31 Hz .. 16 kHz axis labels.
+	// Bands span 30 Hz to just under Nyquist, matching the design's 31 Hz ..
+	// 16 kHz axis labels — but *which* bins each band reads comes from
+	// assignBinCounts's cumulative distribution, not from rounding a
+	// log-spaced frequency position per band (see its comment for why).
 	const double nyquist = audio.sampleRateHz / 2.0;
 	const double lowHz = 30.0;
 	const double highHz = std::min(16000.0, nyquist * 0.98);
-	std::vector<std::size_t> edges(static_cast<std::size_t>(bandCount) + 1);
-	for (int b = 0; b <= bandCount; ++b) {
-		const double t = static_cast<double>(b) / bandCount;
-		const double hz = lowHz * std::pow(highHz / lowHz, t);
-		const double bin = hz * kFftSize / audio.sampleRateHz;
-		edges[static_cast<std::size_t>(b)] = static_cast<std::size_t>(
-			std::clamp(bin, 1.0, static_cast<double>(kFftSize / 2 - 1)));
-	}
+	const std::size_t lowBin = static_cast<std::size_t>(
+		std::clamp(lowHz * kFftSize / audio.sampleRateHz, 1.0, static_cast<double>(kFftSize / 2 - 1)));
+	const std::size_t highBin = static_cast<std::size_t>(
+		std::clamp(highHz * kFftSize / audio.sampleRateHz,
+			static_cast<double>(lowBin + 1), static_cast<double>(kFftSize / 2)));
+	const auto edges = cumulativeEdges(lowBin, assignBinCounts(highBin - lowBin, bandCount));
 
 	const std::size_t frames = (audio.samples.size() - kWindow) / kHop + 1;
 	// Bound the work: a long DJ set would otherwise produce tens of thousands of
@@ -245,15 +295,13 @@ void VfdSpectrumWidget::rebuildBands(int sampleRateHz, int bands) {
 	const double nyquist = sampleRateHz / 2.0;
 	const double lowHz = 30.0;
 	const double highHz = std::min(16000.0, nyquist * 0.98);
-
-	m_bandEdges.assign(static_cast<std::size_t>(bands) + 1, 0);
-	for (int b = 0; b <= bands; ++b) {
-		const double t = static_cast<double>(b) / bands;
-		const double hz = lowHz * std::pow(highHz / lowHz, t);
-		const double bin = hz * static_cast<double>(kLiveFftSize) / sampleRateHz;
-		m_bandEdges[static_cast<std::size_t>(b)] = static_cast<std::size_t>(
-			std::clamp(bin, 1.0, static_cast<double>(kLiveFftSize / 2 - 1)));
-	}
+	const std::size_t lowBin = static_cast<std::size_t>(std::clamp(
+		lowHz * static_cast<double>(kLiveFftSize) / sampleRateHz, 1.0,
+		static_cast<double>(kLiveFftSize / 2 - 1)));
+	const std::size_t highBin = static_cast<std::size_t>(std::clamp(
+		highHz * static_cast<double>(kLiveFftSize) / sampleRateHz,
+		static_cast<double>(lowBin + 1), static_cast<double>(kLiveFftSize / 2)));
+	m_bandEdges = cumulativeEdges(lowBin, assignBinCounts(highBin - lowBin, bands));
 
 	if (m_window.size() != kLiveWindow) {
 		m_window.resize(kLiveWindow);
@@ -519,14 +567,16 @@ void VfdSpectrumWidget::drawMatrix(QPainter& painter, const QRect& plot) const {
 			painter.fillRect(x, y, 1, m_cellSize, colour);
 		}
 
-		// Peak-hold marker.
+		// Peak-hold marker. Coloured from the same per-row gradient as the bar
+		// itself (not a fixed accent colour): the falling-off cap should read
+		// as part of that bar, not as an unrelated highlight sitting on top.
 		if (m_peakHold && static_cast<std::size_t>(band) < m_peaks.size()) {
 			const float peak = m_peaks[static_cast<std::size_t>(band)];
 			if (peak > 0.02f) {
 				const int peakRow = std::clamp(
 					static_cast<int>(std::lround(peak * static_cast<float>(rows))), 0, rows - 1);
 				const int y = plot.bottom() - (peakRow + 1) * step + m_cellGap;
-				painter.fillRect(x, y, 1, m_cellSize, theme::kPrimary);
+				painter.fillRect(x, y, 1, m_cellSize, litColours[static_cast<std::size_t>(peakRow)]);
 			}
 		}
 	}
