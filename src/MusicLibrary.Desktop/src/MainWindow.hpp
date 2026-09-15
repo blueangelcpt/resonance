@@ -90,6 +90,7 @@ private slots:
 
 	void onFilterChanged();
 	void onTrackActivated(const QModelIndex& index);
+	void onTrackDoubleClicked(const QModelIndex& index);
 	void onExplorerFilter(const TrackFilter& filter);
 	void onAnalyseSpectrum(FileId file);
 	void onPlayPause();
@@ -113,6 +114,14 @@ private:
 	void appendLog(const QString& message);
 	bool requireOpenLibrary();
 	TrackFilter currentFilter() const;
+	/// Loads the given track into the player if it is not already the loaded
+	/// one, decoding on demand. Shared by play/pause (which then toggles) and
+	/// double-click (which then always plays). Returns false, having already
+	/// reported why, if the track could not be made ready to play.
+	bool loadForPlayback(const FileRecord& record);
+	/// Advances to and plays the row after the one currently selected in the
+	/// track table, if there is one. Called when a track finishes on its own.
+	void playNextTrack();
 
 	std::unique_ptr<Library> m_library;
 	TaskRunner* m_runner = nullptr;
@@ -133,6 +142,10 @@ private:
 	QPushButton* m_openButton = nullptr;
 	QTextBrowser* m_coverageBrowser = nullptr;
 	QLabel* m_safetyLabel = nullptr;
+	/// Mirrors m_progress/m_progressLabel (Jobs tab) so progress is visible
+	/// right where a command was started, not only on a different tab.
+	QProgressBar* m_libraryProgress = nullptr;
+	QLabel* m_libraryProgressLabel = nullptr;
 
 	// Header strip
 	QLabel* m_headerTitle = nullptr;

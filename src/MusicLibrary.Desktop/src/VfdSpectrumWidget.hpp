@@ -38,7 +38,13 @@ struct Spectrogram {
 ///
 /// Bands are spaced logarithmically across the audible range, matching how the
 /// design labels its X axis (31 Hz to 16 kHz).
-Spectrogram buildSpectrogram(const AnalysisAudio& audio, int bandCount = 96);
+///
+/// The default band count is high enough that the display renders each
+/// visible bar from its own distinct slice of spectrum at typical widget
+/// widths, rather than stretching a coarser set of bands across more pixels
+/// than it has data for — which reads as a much blockier, wider-barred
+/// display than the dot-matrix design calls for.
+Spectrogram buildSpectrogram(const AnalysisAudio& audio, int bandCount = 480);
 
 class VfdSpectrumWidget : public QWidget {
 	Q_OBJECT
@@ -118,9 +124,12 @@ private:
 	std::vector<float> m_window;      ///< Hann, sized to the analysis window.
 	std::vector<std::size_t> m_bandEdges;
 	int m_bandEdgeRate = 0;           ///< Rate the edges were built for.
+	int m_bandEdgeCount = 0;          ///< Band count the edges were built for.
 
-	/// Rebuilds the logarithmic band edges when the output rate changes.
-	void rebuildBands(int sampleRateHz);
+	/// Rebuilds the logarithmic band edges when the output rate or the band
+	/// count (which tracks the widget's current width — see pushLiveSamples)
+	/// has changed since they were last built.
+	void rebuildBands(int sampleRateHz, int bands);
 	/// Applies meter ballistics towards a freshly computed column.
 	void applyColumn(const std::vector<float>& column, float attack, float release);
 };

@@ -25,7 +25,7 @@ the audio.
 | **Privacy** | Removes recognised purchase and account data; preserves public identifiers like MusicBrainz IDs. Unknown private frames go to review, never removal. |
 | **Gain** | Removes ReplayGain and Sound Check; preserves gapless information; refuses entirely when MP3Gain undo data is present. |
 | **Organisation** | The confirmed template, with collision detection and Windows filesystem preflighting. |
-| **Playback** | Play, pause, seek and volume, with a VFD spectrum analyser following the real playhead. |
+| **Playback** | Double-click a track to play it, with automatic advance to the next one; play, pause, stop, seek and volume; a VFD spectrum analyser following the real playhead. |
 
 ## Building
 
@@ -86,6 +86,106 @@ The desktop application takes the same paths:
 ```bash
 resonance-desktop --source /path/to/music --output /path/to/output
 ```
+
+## Using the desktop application
+
+The window has four tabs. They are four views of the same catalogue, not four
+separate tools — nothing you do in one requires leaving it to finish in
+another.
+
+### Library & commands
+
+Where a library is opened and every operation is run, in order:
+
+1. **Folders.** Set **Source** (your music — never written to), **Output**
+   (where organised copies land) and **Catalogue and cache** (where the
+   database, artwork assets and logs live). Output and cache must both sit
+   outside the source. Tick **Offline** to skip every network lookup;
+   cataloguing, local BPM analysis, local artwork processing and tagging
+   copied files all still work.
+2. Press **Open library**.
+3. Run the commands top to bottom as numbered — each stage feeds the next:
+   - **Read-only**: `1. Scan` inventories the source (writes nothing to your
+     music); `2. Group albums` clusters files into provisional albums.
+     `Create test sample` copies an independent sample elsewhere, for trying
+     things without touching the real collection.
+   - **Analyse**: `3. BPM (local)`, `4. Artwork`, `5. Lyrics` — enrichment.
+     Artwork and lyrics degrade cleanly offline; BPM is always local.
+   - **Plan and write**: `6. Build change plan` computes the exact changes
+     (it cannot modify a file — there is no writer behind it). `7. Export
+     copies` writes organised copies to the output folder. `8. Verify`
+     re-reads what was written and checks it against the plan.
+     `Resume after interruption` reconciles operations a crash or power loss
+     left mid-flight.
+4. **Progress** shows what is running right now, with a counter
+   (`done of total`) once the total is known; while it is not yet known
+   (for example, early in a scan before the file count is final) the bar
+   shows indeterminate activity rather than sitting at zero, so it never
+   looks stalled. The same progress also appears on the **Jobs & history**
+   tab, which keeps a running log and adds **Pause** (finishes or discards
+   the file in progress, then waits — nothing is ever left half-written) and
+   **Cancel**.
+5. **Coverage** summarises what fraction of the catalogue has artwork,
+   lyrics, BPM and so on; **Refresh** recomputes it.
+
+### Workbench
+
+The main view once a library is open.
+
+- **Library explorer** (left): a tree of the catalogue — *Needs attention*
+  breaks out files missing artwork, lyrics or BPM, carrying gain fields,
+  flagged for privacy, or unreadable; *Albums* lists every grouped album.
+  Selecting a node filters the track matrix to it; the box above the tree
+  filters the tree itself.
+- **Selected track / VFD spectrum analyser / track matrix** (centre): the
+  track matrix is the master list. **Click** a row to select it — this
+  updates the deck, the inspector and the change-plan preview everywhere
+  else in the window. **Double-click** a row to play it immediately,
+  whatever the player was doing a moment before. The checkboxes above the
+  matrix (*No artwork*, *No lyrics*, *No BPM*, *Gain*, *Privacy*) filter it
+  further, alongside the free-text search box.
+  The transport under **Selected track** is ▶/❚❚ (play/pause), ■ (stop), a
+  volume slider, and **Analyse**, which decodes the selected track and shows
+  its real spectrum in the VFD panel. While a track is actually playing, the
+  analyser instead follows the live output; pausing freezes it on its last
+  frame rather than blanking it, and it reverts to the decoded view on an
+  actual stop. When one track finishes, the next row in the (filtered) track
+  matrix starts automatically; at the end of the list, playback simply stops.
+- **Inspector** (right): three tabs on the selected file — **Change plan**
+  (what would be written and why, without writing anything), **ID3
+  inspector** (the raw discovered tag frames, including ones this
+  application does not interpret) and **Lyrics**.
+
+### Artwork review
+
+One album at a time: pick it from the table at the top (**Only albums
+needing review** narrows that list). Below, the **Candidates** list holds
+every artwork match found for that album; selecting one compares it against
+what is currently embedded and previews the actual 600×600 output — the same
+pipeline the writer uses, not an approximation. **Zoom** switches between
+fit-to-pane (fair comparison across differently sized sources) and 100%
+original pixels (where JPEG blocking, moiré and sharpening halos actually
+show). **Lock this cover** pins a choice so it survives rescans and provider
+refreshes; **Reject** discards a candidate for this album; **Import file…**
+brings in a JPEG or PNG you already have, no network required. **Google
+Images**, **Apple Music** and **MusicBrainz** open a search in your browser
+as a manual research aid — no search API is called on your behalf.
+
+### Jobs & history
+
+The progress bar, counter, **Pause**/**Cancel** and a scrolling log of every
+command run this session, each with its outcome. See *Library & commands*
+above for what pause actually does mid-write.
+
+### Keyboard shortcuts
+
+| Key | Action |
+|---|---|
+| <kbd>Space</kbd> | Play/pause the selected track |
+
+That is the complete list today — everything else is mouse-driven. If you
+rely on a shortcut that is not here, it does not exist yet rather than being
+undocumented.
 
 ## How safety is enforced
 

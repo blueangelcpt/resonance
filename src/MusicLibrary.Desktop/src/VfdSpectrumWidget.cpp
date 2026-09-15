@@ -236,11 +236,12 @@ void VfdSpectrumWidget::setLiveMode(bool live) {
 	update();
 }
 
-void VfdSpectrumWidget::rebuildBands(int sampleRateHz) {
-	if (sampleRateHz <= 0 || m_bandEdgeRate == sampleRateHz) return;
+void VfdSpectrumWidget::rebuildBands(int sampleRateHz, int bands) {
+	if (sampleRateHz <= 0 || bands <= 0) return;
+	if (m_bandEdgeRate == sampleRateHz && m_bandEdgeCount == bands) return;
 	m_bandEdgeRate = sampleRateHz;
+	m_bandEdgeCount = bands;
 
-	const int bands = m_levels.empty() ? 96 : static_cast<int>(m_levels.size());
 	const double nyquist = sampleRateHz / 2.0;
 	const double lowHz = 30.0;
 	const double highHz = std::min(16000.0, nyquist * 0.98);
@@ -289,14 +290,20 @@ void VfdSpectrumWidget::applyColumn(const std::vector<float>& column, float atta
 void VfdSpectrumWidget::pushLiveSamples(const std::vector<float>& samples, int sampleRateHz) {
 	if (!m_liveMode) return;
 
-	constexpr int kBands = 96;
+	// One band per bar, one bar per two pixels (1 px bar + 1 px gap), so the
+	// live path never has to stretch a coarser set of bands across more
+	// columns than it has data for — that stretching is what previously
+	// showed as a blockier, wider-barred display than the design calls for.
+	// Recomputed on every call rather than cached against a resize signal:
+	// cheap next to the FFT below, and it keeps a live resize in sync.
+	const int plotWidth = std::max(0, width() - 46);
+	const int kBands = std::max(8, plotWidth / 2);
 	if (m_levels.size() != static_cast<std::size_t>(kBands)) {
-		m_levels.assign(kBands, 0.0f);
-		m_peaks.assign(kBands, 0.0f);
-		m_peakAge.assign(kBands, 0.0f);
-		m_bandEdgeRate = 0;
+		m_levels.assign(static_cast<std::size_t>(kBands), 0.0f);
+		m_peaks.assign(static_cast<std::size_t>(kBands), 0.0f);
+		m_peakAge.assign(static_cast<std::size_t>(kBands), 0.0f);
 	}
-	rebuildBands(sampleRateHz);
+	rebuildBands(sampleRateHz, kBands);
 	m_liveSampleRate = sampleRateHz;
 
 	if (samples.size() < kLiveWindow || m_bandEdges.empty()) {
