@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "AudioPlayer.hpp"
+#include "mlcore/Text.hpp"
 
 #include <QAudioDevice>
 #include <QMediaDevices>
@@ -20,17 +21,17 @@ namespace {
 Result<std::vector<std::uint8_t>> readWholeFile(const fs::path& path) {
 	std::ifstream file(path, std::ios::binary | std::ios::ate);
 	if (!file) {
-		return Error{ErrorCode::IoError, "cannot open " + path.string()};
+		return Error{ErrorCode::IoError, "cannot open " + text::pathToUtf8(path)};
 	}
 	const std::streamsize size = file.tellg();
 	if (size <= 0) {
-		return Error{ErrorCode::IoError, "empty file: " + path.string()};
+		return Error{ErrorCode::IoError, "empty file: " + text::pathToUtf8(path)};
 	}
 	file.seekg(0, std::ios::beg);
 
 	std::vector<std::uint8_t> bytes(static_cast<std::size_t>(size));
 	if (!file.read(reinterpret_cast<char*>(bytes.data()), size)) {
-		return Error{ErrorCode::IoError, "short read on " + path.string()};
+		return Error{ErrorCode::IoError, "short read on " + text::pathToUtf8(path)};
 	}
 	return bytes;
 }
@@ -120,7 +121,7 @@ Result<DecodedTrack> decodeForPlayback(const fs::path& path, std::int64_t maxDur
 	}
 
 	if (!track.valid()) {
-		return Error{ErrorCode::ParseError, "no audio could be decoded from " + path.string()};
+		return Error{ErrorCode::ParseError, "no audio could be decoded from " + text::pathToUtf8(path)};
 	}
 	track.durationMs = (track.frameCount() * 1000) / track.sampleRateHz;
 	return track;

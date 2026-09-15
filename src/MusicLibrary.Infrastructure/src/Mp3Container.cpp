@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "mlinfra/Mp3Container.hpp"
+#include "mlcore/Text.hpp"
 
 #include <algorithm>
 #include <cstdio>
@@ -411,13 +412,13 @@ Mp3Layout Mp3Container::parseLayoutFromBuffer(const std::byte* data, std::size_t
 Result<Mp3Layout> Mp3Container::readLayout(const fs::path& path) {
 	FileHandle file(path);
 	if (!file) {
-		return Error{ErrorCode::IoError, "cannot open " + path.string()};
+		return Error{ErrorCode::IoError, "cannot open " + text::pathToUtf8(path)};
 	}
 
 	std::error_code ec;
 	const std::uintmax_t size = fs::file_size(path, ec);
 	if (ec) {
-		return Error{ErrorCode::IoError, "cannot stat " + path.string() + ": " + ec.message()};
+		return Error{ErrorCode::IoError, "cannot stat " + text::pathToUtf8(path) + ": " + ec.message()};
 	}
 	if (size == 0) {
 		Mp3Layout empty;
@@ -433,7 +434,7 @@ Result<Mp3Layout> Mp3Container::readLayout(const fs::path& path) {
 	if (fileSize <= kTailProbeBytes * 2) {
 		std::vector<std::byte> whole = readRange(file, 0, fileSize);
 		if (whole.size() != fileSize) {
-			return Error{ErrorCode::IoError, "short read on " + path.string()};
+			return Error{ErrorCode::IoError, "short read on " + text::pathToUtf8(path)};
 		}
 		return parseLayoutFromBuffer(whole.data(), whole.size());
 	}
@@ -442,7 +443,7 @@ Result<Mp3Layout> Mp3Container::readLayout(const fs::path& path) {
 	// needs to cover the tag plus the sync search window.
 	std::vector<std::byte> head = readRange(file, 0, std::min<std::size_t>(fileSize, kId3v2HeaderBytes));
 	if (head.size() < kId3v2HeaderBytes) {
-		return Error{ErrorCode::IoError, "short read on " + path.string()};
+		return Error{ErrorCode::IoError, "short read on " + text::pathToUtf8(path)};
 	}
 
 	std::size_t headBytes = kSyncSearchBytes;
@@ -464,7 +465,7 @@ Result<Mp3Layout> Mp3Container::readLayout(const fs::path& path) {
 	{
 		std::vector<std::byte> headData = readRange(file, 0, headBytes);
 		if (headData.size() != headBytes) {
-			return Error{ErrorCode::IoError, "short read on head of " + path.string()};
+			return Error{ErrorCode::IoError, "short read on head of " + text::pathToUtf8(path)};
 		}
 		std::memcpy(buffer.data(), headData.data(), headBytes);
 	}
@@ -472,7 +473,7 @@ Result<Mp3Layout> Mp3Container::readLayout(const fs::path& path) {
 		const std::int64_t tailOffset = static_cast<std::int64_t>(fileSize - tailBytes);
 		std::vector<std::byte> tailData = readRange(file, tailOffset, tailBytes);
 		if (tailData.size() != tailBytes) {
-			return Error{ErrorCode::IoError, "short read on tail of " + path.string()};
+			return Error{ErrorCode::IoError, "short read on tail of " + text::pathToUtf8(path)};
 		}
 		std::memcpy(buffer.data() + (fileSize - tailBytes), tailData.data(), tailBytes);
 	}
@@ -618,13 +619,13 @@ Result<std::vector<RawFrame>> Mp3Container::readRawFrames(const fs::path& path, 
 
 	FileHandle file(path);
 	if (!file) {
-		return Error{ErrorCode::IoError, "cannot open " + path.string()};
+		return Error{ErrorCode::IoError, "cannot open " + text::pathToUtf8(path)};
 	}
 
 	const std::size_t tagBytes = static_cast<std::size_t>(layout.id3v2TotalSize);
 	std::vector<std::byte> tag = readRange(file, layout.id3v2Offset, tagBytes);
 	if (tag.size() < kId3v2HeaderBytes) {
-		return Error{ErrorCode::IoError, "cannot read ID3v2 tag from " + path.string()};
+		return Error{ErrorCode::IoError, "cannot read ID3v2 tag from " + text::pathToUtf8(path)};
 	}
 
 	auto frames = parseFramesFromBuffer(tag.data(), tag.size(), layout.id3v2Version,

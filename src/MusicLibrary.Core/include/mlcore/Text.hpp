@@ -3,11 +3,24 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace ml::text {
+
+/// Converts a filesystem path to UTF-8.
+///
+/// Never use `path.string()` or `path.generic_string()` for this: on Windows
+/// they convert through the system's native ANSI codepage, and for a
+/// filename containing a character outside it — Cyrillic, CJK, and other
+/// ordinary real-world cases, not just exotica — the MSVC STL's conversion
+/// does not degrade gracefully. It crashes (a stack buffer overrun caught by
+/// /GS), not merely mangles the text. `u8string()` sidesteps the ANSI
+/// conversion entirely. On POSIX the native encoding is already UTF-8, so
+/// this is a no-op there.
+std::string pathToUtf8(const std::filesystem::path& path);
 
 /// Case-folds ASCII plus the Latin-1 supplement and Latin Extended-A. Enough to
 /// catch the case collisions that actually occur in music metadata without

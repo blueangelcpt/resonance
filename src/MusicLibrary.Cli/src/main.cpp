@@ -432,7 +432,7 @@ int runExport(Library& library, const Options& options) {
 	}
 
 	if (!options.yes) {
-		std::cout << "About to write copies into " << options.output.string() << ".\n";
+		std::cout << "About to write copies into " << text::pathToUtf8(options.output) << ".\n";
 		std::cout << "The source collection is not modified. Continue? [y/N] ";
 		std::string answer;
 		std::getline(std::cin, answer);
@@ -635,7 +635,7 @@ int runReport(Library& library, const Options& options) {
 			std::cerr << "could not write the naming report: " << status.error().describe() << "\n";
 			return kExitRuntimeError;
 		}
-		std::cout << "\nNaming evidence written to " << options.destination.string() << "\n";
+		std::cout << "\nNaming evidence written to " << text::pathToUtf8(options.destination) << "\n";
 	}
 	return kExitOk;
 }
@@ -747,7 +747,7 @@ int main(int argc, char** argv) {
 			return copied.error().code == ErrorCode::ProtectedRootViolation
 				? kExitConfiguration : kExitRuntimeError;
 		}
-		std::cout << "Copied " << copied.value() << " files to " << options.destination.string()
+		std::cout << "Copied " << copied.value() << " files to " << text::pathToUtf8(options.destination)
 			<< ".\nEvery copy was verified by hash against its source; the source collection is "
 			   "unchanged.\n";
 		return kExitOk;

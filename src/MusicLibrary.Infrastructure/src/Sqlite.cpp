@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "mlinfra/Sqlite.hpp"
+#include "mlcore/Text.hpp"
 
 #include <sqlite3.h>
 
@@ -282,10 +283,14 @@ Result<Database> Database::open(const fs::path& path, DatabaseOpenOptions option
 	if (!options.readOnly && options.createIfMissing) flags |= SQLITE_OPEN_CREATE;
 	flags |= SQLITE_OPEN_NOMUTEX;   // One connection per thread; no shared mutex needed.
 
+	// sqlite3_open_v2's char* overload requires UTF-8, not the native/ANSI
+	// encoding path.string() produces on Windows.
+	const std::string utf8Path = text::pathToUtf8(path);
+
 	sqlite3* handle = nullptr;
-	const int rc = sqlite3_open_v2(path.string().c_str(), &handle, flags, nullptr);
+	const int rc = sqlite3_open_v2(utf8Path.c_str(), &handle, flags, nullptr);
 	if (rc != SQLITE_OK) {
-		std::string message = "cannot open catalogue " + path.string();
+		std::string message = "cannot open catalogue " + utf8Path;
 		if (handle) {
 			message += ": ";
 			message += sqlite3_errmsg(handle);
@@ -409,10 +414,11 @@ Status Database::backupTo(const fs::path& destination) {
 		return Status(Error{ErrorCode::DatabaseError, "backup from a closed database"});
 	}
 
+	const std::string utf8Destination = text::pathToUtf8(destination);
 	sqlite3* target = nullptr;
-	if (sqlite3_open_v2(destination.string().c_str(), &target,
+	if (sqlite3_open_v2(utf8Destination.c_str(), &target,
 			SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr) != SQLITE_OK) {
-		std::string message = "cannot open backup destination " + destination.string();
+		std::string message = "cannot open backup destination " + utf8Destination;
 		if (target) {
 			message += ": ";
 			message += sqlite3_errmsg(target);

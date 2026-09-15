@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "mlinfra/AudioAnalysis.hpp"
+#include "mlcore/Text.hpp"
 #include "mlinfra/Hashing.hpp"
 
 // MINIMP3_FLOAT_OUTPUT is set on the minimp3 interface target so every
@@ -26,17 +27,17 @@ constexpr float kPi = 3.14159265358979323846f;
 Result<std::vector<std::uint8_t>> readWholeFile(const fs::path& path) {
 	std::ifstream file(path, std::ios::binary | std::ios::ate);
 	if (!file) {
-		return Error{ErrorCode::IoError, "cannot open " + path.string()};
+		return Error{ErrorCode::IoError, "cannot open " + text::pathToUtf8(path)};
 	}
 	const std::streamsize size = file.tellg();
 	if (size <= 0) {
-		return Error{ErrorCode::IoError, "empty file: " + path.string()};
+		return Error{ErrorCode::IoError, "empty file: " + text::pathToUtf8(path)};
 	}
 	file.seekg(0, std::ios::beg);
 
 	std::vector<std::uint8_t> bytes(static_cast<std::size_t>(size));
 	if (!file.read(reinterpret_cast<char*>(bytes.data()), size)) {
-		return Error{ErrorCode::IoError, "short read on " + path.string()};
+		return Error{ErrorCode::IoError, "short read on " + text::pathToUtf8(path)};
 	}
 	return bytes;
 }
@@ -153,7 +154,7 @@ Result<AnalysisAudio> Mp3Decoder::decode(const fs::path& path, DecodeOptions opt
 	}
 
 	if (audio.samples.empty()) {
-		return Error{ErrorCode::ParseError, "no audio could be decoded from " + path.string()};
+		return Error{ErrorCode::ParseError, "no audio could be decoded from " + text::pathToUtf8(path)};
 	}
 
 	audio.durationMs = (static_cast<std::int64_t>(audio.samples.size()) * 1000)
@@ -205,7 +206,7 @@ Result<std::vector<std::int16_t>> Mp3Decoder::decodePcm(const fs::path& path, in
 	}
 
 	if (out.empty()) {
-		return Error{ErrorCode::ParseError, "no PCM could be decoded from " + path.string()};
+		return Error{ErrorCode::ParseError, "no PCM could be decoded from " + text::pathToUtf8(path)};
 	}
 	return out;
 }

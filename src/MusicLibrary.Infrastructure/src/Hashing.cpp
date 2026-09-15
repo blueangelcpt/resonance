@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "mlinfra/Hashing.hpp"
+#include "mlcore/Text.hpp"
 
 #include <cstdio>
 #include <cstring>
@@ -218,7 +219,7 @@ FileHandle openForRead(const std::filesystem::path& path) {
 Result<std::string> hashFile(const std::filesystem::path& path) {
 	FileHandle file = openForRead(path);
 	if (!file) {
-		return Error{ErrorCode::IoError, "cannot open for reading: " + path.string()};
+		return Error{ErrorCode::IoError, "cannot open for reading: " + text::pathToUtf8(path)};
 	}
 
 	Sha256 hasher;
@@ -228,7 +229,7 @@ Result<std::string> hashFile(const std::filesystem::path& path) {
 		if (read > 0) hasher.update(buffer.data(), read);
 		if (read < buffer.size()) {
 			if (std::ferror(file.get())) {
-				return Error{ErrorCode::IoError, "read error: " + path.string()};
+				return Error{ErrorCode::IoError, "read error: " + text::pathToUtf8(path)};
 			}
 			break;
 		}
@@ -243,7 +244,7 @@ Result<std::string> hashFileRange(const std::filesystem::path& path, std::int64_
 
 	FileHandle file = openForRead(path);
 	if (!file) {
-		return Error{ErrorCode::IoError, "cannot open for reading: " + path.string()};
+		return Error{ErrorCode::IoError, "cannot open for reading: " + text::pathToUtf8(path)};
 	}
 
 #ifdef _WIN32
@@ -251,7 +252,7 @@ Result<std::string> hashFileRange(const std::filesystem::path& path, std::int64_
 #else
 	if (std::fseek(file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
 #endif
-		return Error{ErrorCode::IoError, "cannot seek to offset in " + path.string()};
+		return Error{ErrorCode::IoError, "cannot seek to offset in " + text::pathToUtf8(path)};
 	}
 
 	Sha256 hasher;
@@ -263,12 +264,12 @@ Result<std::string> hashFileRange(const std::filesystem::path& path, std::int64_
 		const std::size_t read = std::fread(buffer.data(), 1, want, file.get());
 		if (read == 0) {
 			if (std::ferror(file.get())) {
-				return Error{ErrorCode::IoError, "read error: " + path.string()};
+				return Error{ErrorCode::IoError, "read error: " + text::pathToUtf8(path)};
 			}
 			// Fewer bytes than the caller expected means the file is shorter than
 			// the plan assumed. That is a verification failure, not a silent pass.
 			return Error{ErrorCode::VerificationFailed,
-				"file is shorter than the requested range: " + path.string()};
+				"file is shorter than the requested range: " + text::pathToUtf8(path)};
 		}
 		hasher.update(buffer.data(), read);
 		remaining -= static_cast<std::int64_t>(read);

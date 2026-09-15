@@ -34,6 +34,22 @@ namespace ml {
 
 namespace {
 
+// TagLib::FileName takes a wchar_t* on Windows (exact) or a char* elsewhere
+// (assumed UTF-8, matching fs::path::string() on POSIX). fs::path::string()
+// on Windows instead converts through the system ANSI codepage and silently
+// mangles any character it cannot represent — routine for a real music
+// library. wstring() keeps the exact Unicode path TagLib actually opens.
+//
+// Returned by value as a properly-owned string (not TagLib::FileName itself):
+// on POSIX, FileName is just `const char*`, so a helper handing back a
+// FileName built from a local std::string's c_str() would return a pointer
+// into an already-destroyed temporary.
+#ifdef _WIN32
+std::wstring nativeTagPath(const fs::path& path) { return path.wstring(); }
+#else
+std::string nativeTagPath(const fs::path& path) { return path.string(); }
+#endif
+
 constexpr std::size_t kCopyChunk = 1u << 20;
 
 class OutFile {
@@ -267,15 +283,16 @@ Result<std::vector<std::byte>> TagWriter::renderTag(const fs::path& sourcePath,
 	auto layout = Mp3Container::readLayout(sourcePath);
 	if (!layout) return layout.error();
 
-	TagLib::MPEG::File file(sourcePath.string().c_str(), false);
+	const auto nativeSourcePath = nativeTagPath(sourcePath);
+	TagLib::MPEG::File file(nativeSourcePath.c_str(), false);
 	if (!file.isValid()) {
-		return Error{ErrorCode::ParseError, "cannot parse tags in " + sourcePath.string()};
+		return Error{ErrorCode::ParseError, "cannot parse tags in " + text::pathToUtf8(sourcePath)};
 	}
 
 	// create = true so a file with no ID3v2 tag can still receive artwork.
 	TagLib::ID3v2::Tag* tag = file.ID3v2Tag(true);
 	if (!tag) {
-		return Error{ErrorCode::ParseError, "cannot access an ID3v2 tag for " + sourcePath.string()};
+		return Error{ErrorCode::ParseError, "cannot access an ID3v2 tag for " + text::pathToUtf8(sourcePath)};
 	}
 
 	(void)applyToTag(*tag, request);
@@ -337,12 +354,14 @@ Result<TagWriteResult> TagWriter::writeToNewFile(const fs::path& sourcePath, con
 	const GuardDecision decision = guard.checkWrite(destinationPath);
 	if (!decision.allowed()) {
 		return Error{ErrorCode::ProtectedRootViolation,
-			"refusing to write " + destinationPath.string() + ": " + decision.reason};
+			"refusing to write " + text::pathToUtf8(destinationPath) + ": " + decision.reason};
 	}
 	if (guard.isInsideProtectedRoot(destinationPath)) {
 		return Error{ErrorCode::ProtectedRootViolation,
 			"destination resolves inside a protected source root"};
 	}
+
+	const auto nativeSourcePath = nativeTagPath(sourcePath);
 
 	auto layoutResult = Mp3Container::readLayout(sourcePath);
 	if (!layoutResult) return layoutResult.error();
@@ -358,7 +377,7 @@ Result<TagWriteResult> TagWriter::writeToNewFile(const fs::path& sourcePath, con
 	// bytes in an ID3 tag and call the result a track.
 	if (!layout.valid || layout.audioLength <= 0) {
 		return Error{ErrorCode::Unsupported,
-			"no confirmed MPEG audio frame was located in " + sourcePath.string()
+			"no confirmed MPEG audio frame was located in " + text::pathToUtf8(sourcePath)
 				+ "; refusing to rewrite it"};
 	}
 
@@ -384,7 +403,7 @@ Result<TagWriteResult> TagWriter::writeToNewFile(const fs::path& sourcePath, con
 	// --- Collect the changed keys, for the preservation check ---------------
 	std::vector<EmbeddedPicture> sourcePictures;
 	{
-		TagLib::MPEG::File probe(sourcePath.string().c_str(), false);
+		TagLib::MPEG::File probe(nativeSourcePath.c_str(), false);
 		if (probe.isValid()) {
 			if (TagLib::ID3v2::Tag* tag = probe.ID3v2Tag(true)) {
 				for (auto* frame : tag->frameList("APIC")) {
@@ -403,12 +422,12 @@ Result<TagWriteResult> TagWriter::writeToNewFile(const fs::path& sourcePath, con
 	// --- Assemble the output ------------------------------------------------
 	InFile source(sourcePath);
 	if (!source) {
-		return Error{ErrorCode::IoError, "cannot open source " + sourcePath.string()};
+		return Error{ErrorCode::IoError, "cannot open source " + text::pathToUtf8(sourcePath)};
 	}
 
 	OutFile out(destinationPath);
 	if (!out) {
-		return Error{ErrorCode::IoError, "cannot create " + destinationPath.string()};
+		return Error{ErrorCode::IoError, "cannot create " + text::pathToUtf8(destinationPath)};
 	}
 
 	Sha256 contentHasher;
@@ -461,7 +480,7 @@ Result<TagWriteResult> TagWriter::writeToNewFile(const fs::path& sourcePath, con
 			}
 			contentHasher.update(buffer.data(), read);
 		} else {
-			TagLib::MPEG::File probe(sourcePath.string().c_str(), false);
+			TagLib::MPEG::File probe(nativeSourcePath.c_str(), false);
 			if (probe.isValid() && probe.hasAPETag()) {
 				TagLib::APE::Tag* ape = probe.APETag();
 				for (const auto& key : request.removeApeKeys) {
@@ -502,7 +521,7 @@ Result<TagWriteResult> TagWriter::writeToNewFile(const fs::path& sourcePath, con
 	}
 
 	if (!out.flushToDisk()) {
-		return Error{ErrorCode::IoError, "cannot flush " + destinationPath.string() + " to disk"};
+		return Error{ErrorCode::IoError, "cannot flush " + text::pathToUtf8(destinationPath) + " to disk"};
 	}
 	out.close();
 

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "mlinfra/ImagePipeline.hpp"
+#include "mlcore/Text.hpp"
 #include "mlinfra/Hashing.hpp"
 
 #include <jpeglib.h>
@@ -369,11 +370,11 @@ Result<RgbImage> ImagePipeline::decode(const std::uint8_t* data, std::size_t siz
 Result<RgbImage> ImagePipeline::decodeFile(const fs::path& path) {
 	std::ifstream file(path, std::ios::binary);
 	if (!file) {
-		return Error{ErrorCode::IoError, "cannot open image " + path.string()};
+		return Error{ErrorCode::IoError, "cannot open image " + text::pathToUtf8(path)};
 	}
 	std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	if (bytes.empty()) {
-		return Error{ErrorCode::IoError, "image file is empty: " + path.string()};
+		return Error{ErrorCode::IoError, "image file is empty: " + text::pathToUtf8(path)};
 	}
 	return decode(bytes.data(), bytes.size());
 }
@@ -599,15 +600,22 @@ Result<std::string> AssetStore::put(const std::uint8_t* data, std::size_t size, 
 
 	// Write to a temporary name and rename, so a crash never leaves a truncated
 	// file under a hash that claims to describe complete content.
-	const fs::path temporary = absolute.string() + ".partial";
+	//
+	// Appended in place (operator+=) rather than via absolute.string() + "…":
+	// the suffix is pure ASCII, so appending it to the path's existing native
+	// (wide, on Windows) representation can't mangle anything, whereas
+	// round-tripping the whole path through string() first can crash outright
+	// for a hash-named directory that happens to sit under a Unicode one.
+	fs::path temporary = absolute;
+	temporary += ".partial";
 	{
 		std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
 		if (!file) {
-			return Error{ErrorCode::IoError, "cannot write asset " + temporary.string()};
+			return Error{ErrorCode::IoError, "cannot write asset " + text::pathToUtf8(temporary)};
 		}
 		file.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(size));
 		if (!file) {
-			return Error{ErrorCode::IoError, "short write on asset " + temporary.string()};
+			return Error{ErrorCode::IoError, "short write on asset " + text::pathToUtf8(temporary)};
 		}
 	}
 	fs::rename(temporary, absolute, ec);
@@ -627,7 +635,7 @@ Result<std::vector<std::uint8_t>> AssetStore::get(std::string_view relativePath)
 	const fs::path path = resolve(relativePath);
 	std::ifstream file(path, std::ios::binary);
 	if (!file) {
-		return Error{ErrorCode::NotFound, "asset not found: " + path.string()};
+		return Error{ErrorCode::NotFound, "asset not found: " + text::pathToUtf8(path)};
 	}
 	std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	return bytes;
