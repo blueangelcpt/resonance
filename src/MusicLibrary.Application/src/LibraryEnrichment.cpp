@@ -321,8 +321,8 @@ Result<std::int64_t> Library::fetchLyrics(ProgressCallback progress) {
 // Planning (no write capability)
 // ---------------------------------------------------------------------------
 
-Result<FilePlan> Library::buildPlan(const FileRecord& record, CollisionDetector& collisions,
-	std::optional<AlbumId> albumId) {
+Result<FilePlan> Library::buildPlan(Catalogue& catalogue, const FileRecord& record,
+	CollisionDetector& collisions, std::optional<AlbumId> albumId) {
 	FilePlan plan;
 	plan.fileId = record.id;
 	plan.sourceSha256 = record.contentSha256;
@@ -399,9 +399,9 @@ Result<FilePlan> Library::buildPlan(const FileRecord& record, CollisionDetector&
 
 	// --- Artwork (ART-001) ----------------------------------------------------
 	if (albumId) {
-		auto selected = m_catalogue->selectedArtwork(*albumId);
+		auto selected = catalogue.selectedArtwork(*albumId);
 		if (selected && selected.value()) {
-			auto derivative = m_catalogue->findDerivative(selected.value()->id,
+			auto derivative = catalogue.findDerivative(selected.value()->id,
 				m_config.derivative.hash());
 			if (derivative && derivative.value()) {
 				plan.artwork.replaceFrontCover = true;
@@ -427,7 +427,7 @@ Result<FilePlan> Library::buildPlan(const FileRecord& record, CollisionDetector&
 	}
 
 	// --- Tempo (BPM-001) ------------------------------------------------------
-	auto tempo = m_catalogue->loadTempo(record.id);
+	auto tempo = catalogue.loadTempo(record.id);
 	if (tempo && tempo.value()) {
 		plan.tempo = *tempo.value();
 		if (plan.tempo.kind == TempoDecisionKind::NeedsReview) {
@@ -438,7 +438,7 @@ Result<FilePlan> Library::buildPlan(const FileRecord& record, CollisionDetector&
 	}
 
 	// --- Lyrics (LYR-001) -----------------------------------------------------
-	auto lyrics = m_catalogue->loadLyrics(record.id);
+	auto lyrics = catalogue.loadLyrics(record.id);
 	if (lyrics && lyrics.value()) {
 		plan.lyrics = *lyrics.value();
 		if (plan.lyrics.state == LyricsState::NeedsReview) {
@@ -515,7 +515,7 @@ Result<ChangeSet> Library::plan(ProgressCallback progress) {
 
 		for (const auto& record : page.value()) {
 			auto albumId = m_catalogue->albumForFile(record.id);
-			auto plan = buildPlan(record, collisions,
+			auto plan = buildPlan(*m_catalogue, record, collisions,
 				albumId.ok() ? albumId.value() : std::optional<AlbumId>{});
 			if (!plan) return plan.error();
 
@@ -549,14 +549,19 @@ Result<ChangeSet> Library::plan(ProgressCallback progress) {
 }
 
 Result<FilePlan> Library::previewFile(FileId file) {
-	std::lock_guard<std::mutex> lock(m_primaryMutex);
-	auto record = m_catalogue->loadFile(file);
+	// Read-only, and reachable from a single click in the GUI thread: this must
+	// never wait behind m_primaryMutex, which a scan or another background
+	// command can hold for minutes. m_readCatalogue is the connection built
+	// for exactly this (see the comment in Library::open()).
+	if (!m_readCatalogue) return Error{ErrorCode::Internal, "the library is not open"};
+	auto record = m_readCatalogue->loadFile(file);
 	if (!record) return record.error();
 	if (!record.value()) return Error{ErrorCode::NotFound, "no such file in the catalogue"};
 
 	CollisionDetector collisions;
-	auto albumId = m_catalogue->albumForFile(file);
-	return buildPlan(*record.value(), collisions, albumId.ok() ? albumId.value() : std::optional<AlbumId>{});
+	auto albumId = m_readCatalogue->albumForFile(file);
+	return buildPlan(*m_readCatalogue, *record.value(), collisions,
+		albumId.ok() ? albumId.value() : std::optional<AlbumId>{});
 }
 
 // ---------------------------------------------------------------------------
@@ -624,7 +629,7 @@ Result<ExportResult> Library::exportCopies(ChangeSetId set, ProgressCallback pro
 
 		CollisionDetector collisions;
 		auto albumId = m_catalogue->albumForFile(stored.fileId);
-		auto rebuilt = buildPlan(*record.value(), collisions,
+		auto rebuilt = buildPlan(*m_catalogue, *record.value(), collisions,
 			albumId.ok() ? albumId.value() : std::optional<AlbumId>{});
 		if (!rebuilt) {
 			++result.failed;

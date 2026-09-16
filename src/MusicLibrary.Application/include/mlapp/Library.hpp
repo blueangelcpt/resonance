@@ -206,8 +206,12 @@ public:
 	Status backupCatalogue(const std::filesystem::path& destination);
 
 private:
-	Result<FilePlan> buildPlan(const FileRecord& record, CollisionDetector& collisions,
-		std::optional<AlbumId> albumId);
+	/// `catalogue` is the connection to read the album/tempo/lyrics context
+	/// from: the primary connection for the real plan-building command (already
+	/// serialised behind m_primaryMutex), the read-only one for a UI-thread
+	/// preview so it never blocks behind a scan or other background command.
+	Result<FilePlan> buildPlan(Catalogue& catalogue, const FileRecord& record,
+		CollisionDetector& collisions, std::optional<AlbumId> albumId);
 	bool reportProgress(const ProgressCallback& progress, std::int64_t done, std::int64_t total,
 		const std::string& message);
 
